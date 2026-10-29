@@ -231,8 +231,11 @@ class CaptureActivity : Activity(), RecognitionListener {
         val max = if (said.maxLines <= 2) 90 else 260
         said.text = if (text.length > max) tail(text.toString(), max) else text
         said.visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
-        now.text = live
-        now.hint = if (sentences.isEmpty() && live.isEmpty() && !typed.hasFocus()) "Start talking" else null
+        // the prompt is gray text, not a hint: auto-sizing (cover screen) lays a hint out one letter per line, "S" / "t".
+        // Saving reads `live`, never this view, so the prompt can't end up in a capture.
+        val prompt = sentences.isEmpty() && live.isEmpty() && !typed.hasFocus()
+        now.text = if (prompt) "Start talking" else live
+        now.setTextColor(getColor(if (prompt) R.color.ink_muted else R.color.ink_line))
     }
 
     private fun sentenceEnded(pcm: ByteArray) {
@@ -316,7 +319,7 @@ class CaptureActivity : Activity(), RecognitionListener {
         if (queued && animate && ValueAnimator.areAnimatorsEnabled()) {
             catalog.text = "%03d filed".format(number)
             status.text = "Filed."
-            now.hint = null
+            now.text = ""
             plot.fold { finish() }
             return
         }

@@ -102,7 +102,6 @@
         android:autoSizeMinTextSize="15sp"
         android:autoSizeTextType="uniform"
         android:gravity="top"
-        android:hint="Start talking"
         android:maxLines="2" />
 
     <app.thoughtcapturer.PulsePlotView
