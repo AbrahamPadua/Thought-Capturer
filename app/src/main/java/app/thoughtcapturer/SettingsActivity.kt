@@ -15,6 +15,7 @@ import android.widget.TextView
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
+import org.json.JSONObject
 
 /**
  * Sign-in state lives in prefs, not in this screen, so a sign-in started here still finishes after the
@@ -107,12 +108,16 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             }
         }
 
-        private fun waitForApproval(ctx: Context) {
+        /** [redeem] asks Microsoft for tokens with a device code; tests pass a fake. */
+        internal fun waitForApproval(
+            ctx: Context,
+            redeem: (String) -> JSONObject = { msToken("grant_type" to "urn:ietf:params:oauth:grant-type:device_code", "device_code" to it) },
+        ) {
             val p = ctx.prefs()
             while (true) {
                 val code = p.getString("device_code", null) ?: return
                 val error = if (System.currentTimeMillis() > p.getLong("code_expires", 0)) "The code expired. Tap Sign in again." else try {
-                    val t = msToken("grant_type" to "urn:ietf:params:oauth:grant-type:device_code", "device_code" to code)
+                    val t = redeem(code)
                     clearCode(p.edit()).putString("refresh_token", t.getString("refresh_token"))
                         .remove("signin_error").remove("last_error").commit()
                     SaveJob.retryAll(ctx)
