@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-29T00:00:00Z",
+  "title": "Design System: Capture",
+  "extensions": {
+    "colorMeta": {
+      "ink-line": { "role": "primary", "displayName": "Sleeve White", "canonical": "#F2F2F2", "tonalRamp": ["#0B0B0B", "#1A1A1A", "#2E2E2E", "#4A4A4A", "#6A6A6A", "#8A8A8A", "#BDBDBD", "#F2F2F2"] },
+      "ink-ground": { "role": "neutral", "displayName": "Matte Black", "canonical": "#0B0B0B", "tonalRamp": ["#0B0B0B", "#1A1A1A", "#2E2E2E", "#4A4A4A", "#6A6A6A", "#8A8A8A", "#BDBDBD", "#F2F2F2"] },
+      "ink-muted": { "role": "neutral", "displayName": "Graphite Gray", "canonical": "#8A8A8A", "tonalRamp": ["#0B0B0B", "#1A1A1A", "#2E2E2E", "#4A4A4A", "#6A6A6A", "#8A8A8A", "#BDBDBD", "#F2F2F2"] },
+      "ink-faint": { "role": "neutral", "displayName": "Faint Rule", "canonical": "#2E2E2E", "tonalRamp": ["#0B0B0B", "#1A1A1A", "#2E2E2E", "#4A4A4A", "#6A6A6A", "#8A8A8A", "#BDBDBD", "#F2F2F2"] },
+      "code-todo": { "role": "status", "displayName": "To-do Yellow", "canonical": "#F2C14E", "tonalRamp": ["#3A2C08", "#5C4610", "#7F6219", "#A38024", "#C79F33", "#F2C14E", "#F7D684", "#FBEBBF"] },
+      "code-note": { "role": "status", "displayName": "Note Blue", "canonical": "#4F9DDE", "tonalRamp": ["#0C2236", "#153857", "#1F4F7A", "#2A679E", "#3B82C2", "#4F9DDE", "#86BCEA", "#C3DEF5"] },
+      "code-error": { "role": "status", "displayName": "Signal Red", "canonical": "#E5484D", "tonalRamp": ["#3A0B0D", "#5C1316", "#801C20", "#A5262B", "#C93439", "#E5484D", "#EE8487", "#F7C2C3"] },
+      "code-wait": { "role": "status", "displayName": "Waiting Gray", "canonical": "#8A8A8A", "tonalRamp": ["#0B0B0B", "#1A1A1A", "#2E2E2E", "#4A4A4A", "#6A6A6A", "#8A8A8A", "#BDBDBD", "#F2F2F2"] }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Title", "purpose": "Screen titles; Settings only." },
+      "now": { "displayName": "Now", "purpose": "The sentence being spoken, white; auto-sizes 24 to 15sp on the cover screen." },
+      "said": { "displayName": "Said", "purpose": "Finished sentences and the typing field, gray." },
+      "body": { "displayName": "Body", "purpose": "Settings content." },
+      "hint": { "displayName": "Hint", "purpose": "Status line and explanations, gray; 13sp on the cover screen." },
+      "label": { "displayName": "Label", "purpose": "Catalog number and Settings section names, tracked caps; 13sp on the cover screen." },
+      "button-label": { "displayName": "Button label", "purpose": "Hairline text buttons, tracked caps." },
+      "code": { "displayName": "Code", "purpose": "Microsoft device sign-in code, selectable." }
+    },
+    "shadows": [],
+    "states": [
+      { "name": "ripple-on-black", "value": "#33F2F2F2", "purpose": "Press ripple for rings and hairline buttons; also colorControlHighlight." },
+      { "name": "ripple-on-done", "value": "#330B0B0B", "purpose": "Press ripple on the filled Done." },
+      { "name": "text-selection", "value": "#664F9DDE", "purpose": "Text selection highlight." }
+    ],
+    "motion": [
+      { "name": "live-smoothing", "value": "exponential, tau 90ms", "purpose": "Live pulse line easing toward each recognizer level at display rate." },
+      { "name": "live-decay", "value": "exponential, tau 550ms", "purpose": "Level decay between recognizer reports, time-based so 60 and 120Hz match." },
+      { "name": "fold", "value": "350ms DecelerateInterpolator(2.5)", "purpose": "The one authored moment: the stack collapses onto the front line on Done." },
+      { "name": "reduced-motion", "value": "5 stepped levels, no fold", "purpose": "When animator duration scale is 0." }
+    ],
+    "breakpoints": [
+      { "name": "cover", "value": "default layout, under 600dp tall (cover screen about 400 x 440dp)" },
+      { "name": "main", "value": "layout-h600dp (main screen about 360 x 840dp)" },
+      { "name": "plot-short-band", "value": "plot band under 220dp: 6 lines, otherwise up to 16" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Done",
+      "kind": "button",
+      "refersTo": "button-done",
+      "description": "The one filled control: a white circle with a black drawn check, bottom center.",
+      "html": "<button class=\"ds-done\" aria-label=\"Done, save this capture\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#0B0B0B\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12.5 10 17.5 19 7\"/></svg></button>",
+      "css": ".ds-done { width: 80px; height: 80px; border-radius: 50%; border: none; background: #F2F2F2; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s; } .ds-done:hover { background: #E0E0E0; } .ds-done:active { background: #CFCFCF; } .ds-done:focus-visible { outline: 1.5px solid #F2F2F2; outline-offset: 4px; }"
+    },
+    {
+      "name": "Ring",
+      "kind": "button",
+      "refersTo": "button-ring",
+      "description": "Icon control: a 1.5dp white hairline circle with a drawn outline icon (Cancel, Type; 48dp for Settings).",
+      "html": "<button class=\"ds-ring\" aria-label=\"Cancel and discard\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#F2F2F2\" stroke-width=\"1.5\" stroke-linecap=\"round\"><path d=\"M6 6 18 18M18 6 6 18\"/></svg></button>",
+      "css": ".ds-ring { width: 64px; height: 64px; border-radius: 50%; border: 1.5px solid #F2F2F2; background: transparent; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s; } .ds-ring:hover { background: rgba(242,242,242,0.08); } .ds-ring:active { background: rgba(242,242,242,0.2); } .ds-ring:focus-visible { outline: 1.5px solid #F2F2F2; outline-offset: 4px; }"
+    },
+    {
+      "name": "Hairline Button",
+      "kind": "button",
+      "refersTo": "button-hairline",
+      "description": "Text button: sharp 1.5dp white rectangle with a tracked-caps condensed label.",
+      "html": "<button class=\"ds-hairline\">Sign in again</button>",
+      "css": ".ds-hairline { min-height: 52px; padding: 0 20px; border: 1.5px solid #F2F2F2; border-radius: 0; background: transparent; color: #F2F2F2; font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; cursor: pointer; transition: background 0.15s; } .ds-hairline:hover { background: rgba(242,242,242,0.08); } .ds-hairline:active { background: rgba(242,242,242,0.2); } .ds-hairline:focus-visible { outline: 1.5px solid #F2F2F2; outline-offset: 4px; }"
+    },
+    {
+      "name": "Underline Field",
+      "kind": "input",
+      "refersTo": "input-underline",
+      "description": "Single bottom stroke, gray at rest, white on focus.",
+      "html": "<input class=\"ds-field\" type=\"password\" placeholder=\"Paste key\">",
+      "css": ".ds-field { width: 100%; padding: 12px 0; border: none; border-bottom: 1.5px solid #8A8A8A; background: transparent; color: #F2F2F2; font-family: 'Barlow', sans-serif; font-size: 17px; outline: none; transition: border-color 0.15s; } .ds-field::placeholder { color: #8A8A8A; } .ds-field:hover { border-bottom-color: #BDBDBD; } .ds-field:focus-visible, .ds-field:focus { border-bottom-color: #F2F2F2; }"
+    },
+    {
+      "name": "Catalog Label and Code Strip",
+      "kind": "custom",
+      "refersTo": "code-block",
+      "description": "Tracked-caps catalog number with the coded status blocks under it; removed when empty.",
+      "html": "<div class=\"ds-top\" role=\"group\" aria-label=\"Last capture filed 2 to-dos and a note. 1 waiting to sync\"><div class=\"ds-label\">Capture · 015</div><div class=\"ds-strip\"><i style=\"background:#F2C14E\"></i><i style=\"background:#F2C14E\"></i><i style=\"background:#4F9DDE\"></i><i style=\"background:#8A8A8A\"></i></div></div>",
+      "css": ".ds-top { background: #0B0B0B; padding: 12px 0; } .ds-label { font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 14px; letter-spacing: 0.28em; text-transform: uppercase; color: #F2F2F2; } .ds-strip { display: flex; gap: 4px; margin-top: 10px; } .ds-strip i { display: block; width: 18px; height: 6px; } .ds-strip:empty { display: none; }"
+    },
+    {
+      "name": "Pulse Plot",
+      "kind": "custom",
+      "refersTo": "pulse-plot",
+      "description": "Signature: stacked lines, live 3dp front line, frozen 1.5dp sentence lines, 1dp faint empty slots, black underside fills for occlusion.",
+      "html": "<svg class=\"ds-plot\" viewBox=\"0 0 320 140\" role=\"img\" aria-label=\"Pulse plot\"><g fill=\"#0B0B0B\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M0 20H320\" stroke=\"#2E2E2E\" stroke-width=\"1\"/><path d=\"M0 40H320\" stroke=\"#2E2E2E\" stroke-width=\"1\"/><path d=\"M0 60H100L120 52L140 30L155 45L170 20L190 40L210 50L230 60H320V140H0Z\" stroke=\"#F2F2F2\" stroke-width=\"1.5\"/><path d=\"M0 80H90L115 70L135 50L150 62L165 38L185 58L215 72L240 80H320V140H0Z\" stroke=\"#F2F2F2\" stroke-width=\"1.5\"/><path d=\"M0 100H110L130 92L150 80L160 88L175 72L195 90L220 100H320V140H0Z\" stroke=\"#F2F2F2\" stroke-width=\"1.5\"/><path d=\"M0 120H120L140 114L155 104L165 110L180 98L200 114L220 120H320\" fill=\"none\" stroke=\"#F2F2F2\" stroke-width=\"3\"/></g></svg>",
+      "css": ".ds-plot { display: block; width: 100%; max-width: 360px; background: #0B0B0B; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Pulse Sleeve",
+    "overview": "Capture looks like a record sleeve: a matte black ground, white hairlines, and a stacked pulse plot that your voice draws. The live front line follows the microphone level. Each finished sentence freezes into one more white line behind it, so the screen shows two things: that you are being heard, and how much you have said. Everything else stays quiet so the plot can carry the screen.\n\nThe system is monochrome with one exception. Status is spoken in a coded strip of small hue blocks (yellow to-dos, blue note, red problem, gray waiting), the only saturated color in the app. Type splits in two: Barlow Condensed in tracked caps for labels and catalog numbers, Barlow in sentence case for everything the user reads or says. Controls are 1.5dp hairline rings and rectangles with drawn stroke icons. The only filled white object on any screen is Done.\n\nCapture has one dark theme, and it is not a night mode. The black is the world, so there is no light variant. Density is low. The main screen gives the plot the whole flexible middle, and the cover screen keeps the same parts at smaller sizes.",
+    "keyCharacteristics": [
+      "Matte black ground, white hairline drawing, gray for secondary text.",
+      "Hue appears only as coded status blocks, never as decoration or accent.",
+      "Tracked condensed caps for labels; sentence case Barlow for captions and content.",
+      "1.5dp hairline rings and rectangles; one filled white Done per capture screen.",
+      "The stacked pulse plot is the signature and takes all the free vertical space."
+    ],
+    "rules": [
+      { "name": "The Coded Hue Rule", "body": "Saturated color shows up only as status blocks in the code strip (18 × 6dp, square, 4dp apart, read left to right: mic error, to-dos, note, sync error, waiting). Never use a code hue for text, buttons, icons, or decoration. Any screen that shows the strip must also explain it in words, either through the strip's content description or a legend line.", "section": "colors" },
+      { "name": "The One Fill Rule", "body": "Sleeve White fills exactly one control per capture screen: Done. Every other control is a 1.5dp hairline on Matte Black.", "section": "colors" },
+      { "name": "The Two Voices Rule", "body": "Labels are Condensed tracked caps and identify things (catalog numbers, section names, button actions). Captions and content are Barlow in sentence case and are written as plain sentences. Never set a caption in caps, and never use a label as a decorative kicker over a heading.", "section": "typography" },
+      { "name": "The Occlusion Rule", "body": "Depth is drawn as overlap in Matte Black, never as shadow, blur, or glow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do draw every control as a 1.5dp Sleeve White hairline on Matte Black, and keep Done the only filled control.",
+      "Do put status in the code strip, with each block 18 × 6dp, square, and spaced 4dp, and always pair it with words.",
+      "Do set labels and catalog numbers in Barlow Condensed SemiBold tracked caps (0.28 for labels, 0.16 for buttons), and captions in Barlow sentence case.",
+      "Do give the pulse plot all the flexible vertical space on a capture screen.",
+      "Do keep a reduced-motion path for any animation: stepped levels, no authored transition.",
+      "Do draw new icons as 24dp outline vectors with 1.5dp round-capped strokes."
+    ],
+    "donts": [
+      "Don't use a code hue (yellow, blue, red) as an accent, button color, or text color.",
+      "Don't add shadows, glows, blurs, or gradients; depth is Matte Black overlap only.",
+      "Don't add a light theme or a night-mode variant; the black ground is the identity.",
+      "Don't use glyph or icon-font icons, or fill icons in white.",
+      "Don't put Faint Rule (ink-faint) on text; it is for dividers and empty plot slots only.",
+      "Don't round the corners of rectangles; shapes are either full circles or sharp."
+    ]
+  }
+}
