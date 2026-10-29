@@ -86,7 +86,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
                 }
                 pollSignIn(applicationContext)
             } catch (e: Exception) {
-                prefs().edit().putString("signin_error", "Sign-in failed: ${e.message}").apply()
+                prefs().edit().putString("signin_error", "Sign-in failed: ${e.message}").commit()
+                // prefs only notify on a changed value, so the same error twice would leave "Contacting Microsoft…" up
+                runOnUiThread { refresh() }
             }
         }
     }
