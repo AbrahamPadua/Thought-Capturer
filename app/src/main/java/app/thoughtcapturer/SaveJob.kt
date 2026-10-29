@@ -181,7 +181,9 @@ class SaveJob : JobService() {
                     putLong("at", System.currentTimeMillis()) // "tomorrow" means the day it was said, not the day it uploads
                 })
                 .build()
-            return ctx.getSystemService(JobScheduler::class.java).schedule(job) == JobScheduler.RESULT_SUCCESS
+            // past Android's cap on waiting jobs (150), schedule() throws; report failure so the caller copies the text to the clipboard
+            return runCatching { ctx.getSystemService(JobScheduler::class.java).schedule(job) == JobScheduler.RESULT_SUCCESS }
+                .getOrDefault(false)
         }
 
         /** Re-scheduling a job resets its backoff, so captures stuck behind a missing sign-in go out now. */
