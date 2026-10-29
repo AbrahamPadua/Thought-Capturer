@@ -3,6 +3,8 @@
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 14+ refuses to schedule a job that waits for a network without this -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- lets queued captures survive a reboot (JobInfo.setPersisted) -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 

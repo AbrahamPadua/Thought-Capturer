@@ -13,6 +13,9 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
+
+    // lets Robolectric tests see the app's real merged manifest (its permissions)
+    testOptions.unitTests.isIncludeAndroidResources = true
 }
 
 dependencies {

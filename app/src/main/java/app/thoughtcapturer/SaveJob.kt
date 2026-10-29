@@ -8,6 +8,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.PersistableBundle
+import android.util.Log
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -225,6 +226,7 @@ class SaveJob : JobService() {
                 .build()
             // past Android's cap on waiting jobs (150), schedule() throws; report failure so the caller copies the text to the clipboard
             return runCatching { ctx.getSystemService(JobScheduler::class.java).schedule(job) == JobScheduler.RESULT_SUCCESS }
+                .onFailure { Log.e("Capture", "couldn't schedule upload", it) }
                 .getOrDefault(false)
         }
 
