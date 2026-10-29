@@ -79,7 +79,11 @@ fun accessToken(ctx: Context): String {
     val r = try {
         msToken("grant_type" to "refresh_token", "refresh_token" to refresh, "scope" to MS_SCOPE)
     } catch (e: HttpError) {
-        if ("invalid_grant" in e.body) throw IOException("Microsoft sign-in expired. Open settings (⚙) to sign in again.")
+        if ("invalid_grant" in e.body) {
+            // drop the dead token so Settings stops saying "Signed in"; skip if a new sign-in already replaced it
+            if (p.getString("refresh_token", null) == refresh) p.edit().remove("refresh_token").apply()
+            throw IOException("Microsoft sign-in expired. Open settings (⚙) to sign in again.")
+        }
         throw e
     }
     p.edit().putString("refresh_token", r.optString("refresh_token", refresh)).apply()
