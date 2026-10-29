@@ -86,6 +86,19 @@ fun accessToken(ctx: Context): String {
     return r.getString("access_token")
 }
 
+/** The id of the built-in "Tasks" list. Graph pages long results, so follow nextLink as canvas-todo-sync does. */
+fun defaultListId(get: (String) -> JSONObject): String {
+    var url: String? = TODO_LISTS
+    while (url != null) {
+        val page = get(url)
+        val lists = page.getJSONArray("value")
+        (0 until lists.length()).map { lists.getJSONObject(it) }
+            .firstOrNull { it.optString("wellknownListName") == "defaultList" }?.let { return it.getString("id") }
+        url = page.optString("@odata.nextLink").ifEmpty { null }
+    }
+    throw IOException("Couldn't find your default To Do list (Tasks).")
+}
+
 fun geminiSplit(text: String, at: Long, key: String): String {
     val now = SimpleDateFormat("EEEE, yyyy-MM-dd, h:mm a", Locale.US).format(Date(at))
     val prompt = """
@@ -138,9 +151,7 @@ class SaveJob : JobService() {
         val tasks = toTasks(split, raw)
         val token = accessToken(this)
         val auth = mapOf("Authorization" to "Bearer $token")
-        val lists = http(TODO_LISTS, headers = auth).getJSONArray("value")
-        val listId = (0 until lists.length()).map { lists.getJSONObject(it) }
-            .first { it.optString("wellknownListName") == "defaultList" }.getString("id")
+        val listId = defaultListId { http(it, headers = auth) }
         // Graph wants Windows zone names ("Pacific Standard Time"), same as canvas-todo-sync sends
         val tz = android.icu.util.TimeZone.getWindowsID(java.util.TimeZone.getDefault().id) ?: "UTC"
         for (i in p.getInt("${k}_done", 0) until tasks.size) {
