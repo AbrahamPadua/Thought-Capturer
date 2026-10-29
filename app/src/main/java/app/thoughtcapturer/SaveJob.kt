@@ -13,6 +13,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 import java.util.Date
 import java.util.Locale
 import kotlin.concurrent.thread
@@ -31,14 +32,13 @@ fun Context.prefs(): SharedPreferences = getSharedPreferences("capture", Context
 
 data class Task(val title: String, val due: String?)
 
-private val DATE = Regex("""\d{4}-\d{2}-\d{2}""")
-
 /** Gemini's JSON array to tasks. Anything unusable falls back to the raw capture as one task. */
 fun toTasks(json: String?, raw: String): List<Task> {
     val parsed = runCatching {
         val a = JSONArray(json ?: "[]")
         (0 until a.length()).map { a.getJSONObject(it) }
-            .map { Task(it.optString("title").trim(), it.optString("due").takeIf(DATE::matches)) }
+            // a real date only: To Do rejects "2027-02-29", and that would fail the upload forever
+            .map { Task(it.optString("title").trim(), it.optString("due").takeIf { d -> runCatching { LocalDate.parse(d) }.isSuccess }) }
             .filter { it.title.isNotEmpty() }
     }.getOrDefault(emptyList())
     // To Do caps titles at 255 chars; the full capture also goes in the task note

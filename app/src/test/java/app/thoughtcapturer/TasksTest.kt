@@ -24,4 +24,9 @@ class TasksTest {
         assertEquals(255, task.title.length)
         assertNull(task.due)
     }
+
+    @Test
+    fun dropsDatesThatDoNotExist() {
+        assertNull(toTasks("""[{"title":"Pay rent","due":"2027-02-29"}]""", "raw").single().due)
+    }
 }
