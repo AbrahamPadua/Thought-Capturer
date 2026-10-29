@@ -159,7 +159,7 @@ A black-and-white sleeve palette with four status hues that only ever appear as 
 ### Hierarchy
 - **Title** (Condensed SemiBold 600, 34sp, 0.04 tracking, sentence case): screen titles. Settings is the only one.
 - **Now** (Barlow Medium 500, 32sp, 1.02 line height): the sentence being spoken right now, in Sleeve White. Up to 4 lines on the main screen. On the cover screen it auto-sizes from 24sp down to 15sp in a fixed 60dp, 2-line box.
-- **Said** (Barlow 400, 20sp, 1.1 line height): finished sentences in Graphite Gray, above Now. Also the typing field. Up to 5 lines on the main screen; 15sp and 2 lines on the cover screen.
+- **Said** (Barlow 400, 20sp, 1.1 line height): finished sentences in Graphite Gray, above Now. Italic while a sentence still shows the recognizer's rough words, upright once Gemini's exact words replace it. Up to 5 lines on the main screen, keeping the newest words and cutting older ones with an ellipsis; 15sp and 2 lines on the cover screen.
 - **Body** (Barlow 400, 17sp, 1.15 line height): Settings content in Sleeve White.
 - **Hint** (Barlow 400, 15sp): status line and explanations in Graphite Gray. 13sp, 2 lines, ellipsized on the cover screen.
 - **Label** (Condensed SemiBold 600, 14sp, 0.28 tracking, all caps): the catalog number (`Capture · 015`, then `015 filed`) and Settings section names. 13sp on the cover screen.
@@ -199,7 +199,7 @@ There are two shapes. Full circles (50%) are used for icon controls: the setting
 
 ### Inputs / Fields
 - **Underline field:** a single 1.5dp bottom stroke in Graphite Gray at rest and Sleeve White when focused, with Body type and 12dp vertical padding. The other three edges are pushed outside the bounds.
-- **Capture text field:** has no chrome at all (no background, no padding). It is the Said text itself, bottom-aligned, so typing and speech read as one record.
+- **Typing field:** a separate field below Said, in Body type over a hairline underline, shown only after the Type button. Typed words stay out of the spoken transcript, so a late correction of a spoken sentence can never overwrite them.
 
 ### Code Strip
 - A row of 18 × 6dp square blocks with 4dp gaps, 10dp under the catalog label (14dp under the Queue label in Settings). Order and caps are covered by the Coded Hue Rule. Its content description reads the status in words (for example, "Last capture filed 2 to-dos and a note. 1 waiting to sync"). The strip is removed from layout when it has no blocks, so it never leaves a gap. That empty state is implemented but has not been captured on a device.

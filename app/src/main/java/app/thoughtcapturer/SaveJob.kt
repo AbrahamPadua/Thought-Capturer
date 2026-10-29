@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.PersistableBundle
 import android.util.Log
+import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -122,31 +123,66 @@ fun defaultListId(get: (String) -> JSONObject): String {
     throw IOException("Couldn't find your default To Do list (Tasks).")
 }
 
-fun geminiSplit(text: String, at: Long, key: String): String {
+// The owner's accent and the languages they mix, given to every transcription.
+private const val SPEECH_RULES = "The speaker has an Asian accent and may mix English, Tagalog and Spanish in one sentence. " +
+    "Write every word in the language it was spoken; never translate. Where the accent makes a word ambiguous, choose the most likely word in context."
+
+// shortcut: Gemini takes about 20MB inline; past ~6 minutes of 16kHz audio the job sends the on-screen text instead. Use the Files API if longer notes matter.
+const val MAX_AUDIO = 12_000_000L
+
+/** The transcript Gemini returned with an audio split, or null when the split had none (typed only, or a failed call). */
+fun transcriptOf(json: String?): String? =
+    runCatching { JSONObject(json!!).optString("transcript").trim() }.getOrNull()?.ifEmpty { null }
+
+private fun audioPart(pcm: ByteArray) = JSONObject().put(
+    "inlineData", JSONObject().put("mimeType", "audio/wav").put("data", java.util.Base64.getEncoder().encodeToString(wav(pcm)))
+)
+
+private fun gemini(key: String, parts: JSONArray, config: JSONObject): String {
+    val req = JSONObject().put("contents", JSONArray().put(JSONObject().put("parts", parts))).put("generationConfig", config)
+    val r = http(
+        "https://generativelanguage.googleapis.com/v1beta/models/$GEMINI_MODEL:generateContent",
+        req.toString(), headers = mapOf("x-goog-api-key" to key)
+    )
+    val out = r.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts")
+    return (0 until out.length()).map { out.getJSONObject(it) }
+        .first { it.has("text") && !it.optBoolean("thought") }.getString("text")
+}
+
+/** One finished sentence's audio to text, for the live correction on the capture screen. */
+fun geminiTranscribe(pcm: ByteArray, key: String): String = gemini(
+    key,
+    JSONArray().put(audioPart(pcm)).put(JSONObject().put("text",
+        "Transcribe this audio. $SPEECH_RULES Return only the words spoken, with normal punctuation, and nothing else. If there is no speech, return nothing.")),
+    JSONObject().put("responseMimeType", "text/plain"),
+).trim()
+
+/**
+ * Sorts a capture into to-dos and a note. With [pcm] Gemini transcribes the recording first (returned as
+ * "transcript") and [text] holds only words typed alongside it; without, [text] is the whole capture.
+ */
+fun geminiSplit(text: String, at: Long, key: String, pcm: ByteArray? = null): String {
     val now = SimpleDateFormat("EEEE, yyyy-MM-dd, h:mm a", Locale.US).format(Date(at))
+    val source = if (pcm == null) "Voice note: $text" else
+        "First write the recording word for word into transcript. $SPEECH_RULES Then sort the transcript" +
+            (if (text.isBlank()) "." else " together with these typed words: $text")
     val prompt = """
         It is $now. Sort this voice note into to-do tasks and a note.
         - tasks: things the speaker needs to do, one per separate action. title: short, starts with a verb, keeps their own words and names. due: YYYY-MM-DD, only when they gave or implied a date ("by Friday", "tomorrow"); otherwise leave it out.
         - note: everything else worth keeping, like details, ideas, explanations and thinking out loud. title: a few words naming the topic. points: that content as short, clear bullet points in a sensible order, keeping every detail and the speaker's wording. Add no facts they didn't say.
         - If it is all to-dos, leave out the note. If it is all rambling, return an empty tasks list.
-        Voice note: $text
+        - Keep every word in the language it was said.
+        $source
     """.trimIndent()
     val schema = JSONObject(
         """{"type":"OBJECT","properties":{""" +
+            """"transcript":{"type":"STRING"},""" +
             """"tasks":{"type":"ARRAY","items":{"type":"OBJECT","properties":{"title":{"type":"STRING"},"due":{"type":"STRING"}},"required":["title"]}},""" +
             """"note":{"type":"OBJECT","properties":{"title":{"type":"STRING"},"points":{"type":"ARRAY","items":{"type":"STRING"}}},"required":["title","points"]}""" +
             """},"required":["tasks"]}"""
     )
-    val req = JSONObject()
-        .put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
-        .put("generationConfig", JSONObject().put("responseMimeType", "application/json").put("responseSchema", schema))
-    val r = http(
-        "https://generativelanguage.googleapis.com/v1beta/models/$GEMINI_MODEL:generateContent",
-        req.toString(), headers = mapOf("x-goog-api-key" to key)
-    )
-    val parts = r.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts")
-    return (0 until parts.length()).map { parts.getJSONObject(it) }
-        .first { it.has("text") && !it.optBoolean("thought") }.getString("text")
+    val parts = JSONArray().apply { if (pcm != null) put(audioPart(pcm)) }.put(JSONObject().put("text", prompt))
+    return gemini(key, parts, JSONObject().put("responseMimeType", "application/json").put("responseSchema", schema))
 }
 
 /** Uploads one capture. JobScheduler gives us the offline queue, retries with backoff, and reboot survival. */
@@ -168,13 +204,26 @@ class SaveJob : JobService() {
     override fun onStopJob(params: JobParameters) = true
 
     private fun save(params: JobParameters) {
-        val raw = params.extras.getString("text")!!
+        val shown = params.extras.getString("text")!! // what the screen showed: the fallback if Gemini can't help
+        val typed = params.extras.getString("typed").orEmpty()
+        val audio = params.extras.getString("audio")?.let(::File)?.takeIf { it.isFile && it.length() in 1..MAX_AUDIO }
         val at = params.extras.getLong("at")
         val p = prefs()
         val k = "job${params.jobId}"
         // cache the split so a retry after a partial upload doesn't ask Gemini again and get a different split
-        val split = p.getString("${k}_split", null)
-            ?: split(raw, at).also { p.edit().putString("${k}_split", it).commit() }
+        val split = p.getString("${k}_split", null) ?: split(if (audio == null) shown else typed, at, audio).also {
+            // Gemini failed on a recording with no live words: nothing else holds what was said, so keep it and retry
+            if (audio != null && it.isBlank() && shown.isBlank() && typed.isBlank())
+                throw IOException("Couldn't transcribe a recording yet: ${p.getString("gemini_error", null) ?: "no Gemini key"}")
+            p.edit().putString("${k}_split", it).commit()
+        }
+        // the recording's own transcript beats the live captions it replaces
+        val raw = transcriptOf(split)?.let { listOf(it, typed).filter(String::isNotBlank).joinToString("\n\n") } ?: shown
+        if (raw.isBlank()) { // Gemini heard only noise and nothing was typed: there is nothing to file
+            p.edit().remove("${k}_split").remove("${k}_done").apply()
+            audio?.delete()
+            return
+        }
         val (tasks, note) = parseSplit(split, raw)
         val token = accessToken(this)
         val auth = mapOf("Authorization" to "Bearer $token")
@@ -198,14 +247,15 @@ class SaveJob : JobService() {
         p.edit().remove("${k}_split").remove("${k}_done").remove("last_error")
             .putString("last_filed", "${tasks.size} ${if (note == null) 0 else 1}") // read by the code strip (Codes.kt)
             .apply()
+        params.extras.getString("audio")?.let { File(it).delete() } // filed: the recording has done its job
     }
 
     /** Gemini's JSON, or "" (meaning save unsplit) when there's no key or the call fails. */
-    private fun split(raw: String, at: Long): String {
+    private fun split(text: String, at: Long, audio: File?): String {
         val key = prefs().getString("gemini_key", null)
         if (key.isNullOrBlank()) return ""
         return try {
-            geminiSplit(raw, at, key).also { prefs().edit().remove("gemini_error").apply() }
+            geminiSplit(text, at, key, audio?.readBytes()).also { prefs().edit().remove("gemini_error").apply() }
         } catch (e: Exception) {
             prefs().edit().putString("gemini_error", e.message ?: e.toString()).apply()
             ""
@@ -213,7 +263,8 @@ class SaveJob : JobService() {
     }
 
     companion object {
-        fun enqueue(ctx: Context, text: String): Boolean {
+        /** [text] is everything the screen showed; [audio] the recording, if any; [typed] the words typed beside it. */
+        fun enqueue(ctx: Context, text: String, audio: File? = null, typed: String = ""): Boolean {
             val p = ctx.prefs()
             val id = p.getInt("next_job", 1)
             p.edit().putInt("next_job", id + 1).commit()
@@ -226,6 +277,8 @@ class SaveJob : JobService() {
                 .setBackoffCriteria(30_000, JobInfo.BACKOFF_POLICY_EXPONENTIAL)
                 .setExtras(PersistableBundle().apply {
                     putString("text", text)
+                    putString("typed", typed)
+                    audio?.let { putString("audio", it.path) }
                     putLong("at", System.currentTimeMillis()) // "tomorrow" means the day it was said, not the day it uploads
                 })
                 .build()

@@ -75,7 +75,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:text="Optional. With a key, one capture can become several to-dos with due dates, and details or rambling become an organized OneNote note. Without one, each capture is saved as a single to-do." />
+            android:text="Optional, but it makes your words accurate. With a key, Gemini transcribes your recording, accent and mixed languages included, and one capture can become several to-dos with due dates plus an organized OneNote note. Without one you get Android's rough words, saved as a single to-do." />
 
         <EditText
             android:id="@+id/key"

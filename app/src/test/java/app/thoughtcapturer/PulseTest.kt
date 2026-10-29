@@ -6,14 +6,6 @@ import org.junit.Test
 
 class PulseTest {
     @Test
-    fun mapsRecognizerDecibelsToALevel() {
-        assertEquals(0f, levelFromRms(-5f), 0f)
-        assertEquals(0f, levelFromRms(-2f), 0f)
-        assertEquals(0.5f, levelFromRms(4f), 1e-6f)
-        assertEquals(1f, levelFromRms(30f), 0f)
-    }
-
-    @Test
     fun stepsLevelsWhenAnimationsAreOff() {
         assertEquals(0.5f, stepped(0.49f, 5), 0f)
         assertEquals(0.25f, stepped(0.2f, 5), 0f)

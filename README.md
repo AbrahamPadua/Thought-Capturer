@@ -1,6 +1,6 @@
 # Capture
 
-A one-tap thought capturer for Android. Tap the icon and it's already listening. Talk for as long as you need, tap **Done**, and it saves. To-dos go to your Microsoft To Do **Tasks** list. With a Gemini key, "email my professor about the lab by Friday and buy groceries" turns into two tasks, and the first one gets Friday's date. Details and thinking out loud become an organized note in OneNote, in a section called **Capture**.
+A one-tap thought capturer for Android. Tap the icon and it's already listening. Talk for as long as you need, pauses included, since it records continuously, then tap **Done** and it saves. To-dos go to your Microsoft To Do **Tasks** list. With a Gemini key, "email my professor about the lab by Friday and buy groceries" turns into two tasks, and the first one gets Friday's date. Details and thinking out loud become an organized note in OneNote, in a section called **Capture**.
 
 It only captures. Sorting and planning still happen in To Do and OneNote when you review them, ideally once or twice a day.
 
@@ -27,7 +27,7 @@ Updating from a version without OneNote notes? Install the new APK over the old 
 1. Get a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
 2. Paste it into the **Gemini API key** field in Settings. It saves when you leave the screen.
 
-Without a key, each capture is saved as one to-do with exactly what you said, and nothing goes to OneNote.
+The key also makes your words accurate: Gemini transcribes the recording itself, accent and mixed English, Tagalog and Spanish included, keeping each word in the language you said it. Without a key you only get Android's rough words, each capture is saved as one to-do, and nothing goes to OneNote.
 
 ### 4. Try it
 
@@ -43,7 +43,7 @@ Tap the icon and say "email professor about the lab report by Friday. Also, for 
 
 | You do | It does |
 |---|---|
-| Talk, pause, keep talking | Keeps listening. Each finished sentence moves up into the gray text and freezes into a new line in the plot |
+| Talk, pause, keep talking | Keeps recording without a break. Rough words show large as you talk; after each pause the sentence moves up into the gray text and freezes into a new line in the plot. Italic means it's still Android's rough guess; it turns upright when Gemini's exact words replace it |
 | Go quiet | Keeps listening. Only you stop it |
 | Tap **Done** (the white circle) | Saves; the lines fold into one and it closes |
 | Tap the keyboard button or the text | Lets you type or fix a word while it keeps listening |
@@ -55,7 +55,7 @@ The front line of the plot moves with your voice, so you can see it's hearing yo
 
 The screen stays on while Capture is open, so the cover screen can't time out mid-sentence. If you walk away without tapping Done, it stays on until you come back.
 
-With no signal, captures wait in a queue and go out once you're back online, even after a reboot. If Gemini fails, that capture is still saved as one to-do with your exact words.
+With no signal, captures wait in a queue and go out once you're back online, even after a reboot. If Gemini fails, the words the screen showed are saved as one to-do. A recording that showed no words waits and tries again, so it's never filed empty.
 
 ## When something's off
 
@@ -67,7 +67,7 @@ Open Settings (the sliders button). Under **Queue** it shows what's waiting and 
 
 ## Privacy
 
-Your voice goes to the phone's speech service (Samsung's or Google's, whichever is the default). The text goes to Gemini (only if you added a key), Microsoft To Do and OneNote. The Microsoft sign-in and the Gemini key stay in the app's private storage and are kept out of phone backups.
+Capture records your voice itself. Google's speech service on the phone reads that recording to show the rough live words. With a Gemini key, the recording goes to Gemini for the accurate transcript, and the audio file is deleted from the phone once the capture is filed. The text goes to Microsoft To Do and OneNote. The Microsoft sign-in and the Gemini key stay in the app's private storage and are kept out of phone backups.
 
 ## Building it again
 
@@ -81,6 +81,7 @@ The APK lands in `app\build\outputs\apk\debug\app-debug.apk`. Builds from this P
 
 ## Where things are
 
-- `app/src/main/java/app/thoughtcapturer/CaptureActivity.kt`: the listening dialog
+- `app/src/main/java/app/thoughtcapturer/CaptureActivity.kt`: the capture screen
+- `app/src/main/java/app/thoughtcapturer/Recorder.kt`: the continuous recording, pause detection and the audio file
 - `app/src/main/java/app/thoughtcapturer/SaveJob.kt`: the offline queue plus the Gemini, To Do and OneNote calls
 - `app/src/main/java/app/thoughtcapturer/SettingsActivity.kt`: Microsoft sign-in and the Gemini key

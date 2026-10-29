@@ -61,18 +61,30 @@
         android:layout_marginTop="36dp"
         android:accessibilityLiveRegion="polite" />
 
-    <EditText
-        android:id="@+id/text"
+    <TextView
+        android:id="@+id/said"
         style="@style/Capture.Said"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:background="@null"
-        android:gravity="bottom"
+        android:accessibilityLiveRegion="polite"
+        android:maxLines="5"
+        android:visibility="gone" />
+
+    <!-- typing has its own field, so a late Gemini correction of a spoken sentence can never overwrite typed words -->
+    <EditText
+        android:id="@+id/typed"
+        style="@style/Capture.Body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/field_underline"
+        android:hint="Type here"
         android:importantForAutofill="no"
         android:inputType="textMultiLine|textCapSentences"
-        android:maxLines="5"
-        android:padding="0dp" />
+        android:maxLines="4"
+        android:paddingVertical="8dp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/now"

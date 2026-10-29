@@ -18,9 +18,6 @@ import kotlin.math.sin
 internal const val RIDGE = 3.2f // tallest ridge, in line spacings: tall enough to cut into the lines behind
 private const val POINTS = 56
 
-// Recognizers report roughly -2..10 dB.
-internal fun levelFromRms(rmsDb: Float) = ((rmsDb + 2f) / 12f).coerceIn(0f, 1f)
-
 /** Snaps to one of [steps] levels; used when animations are off, so the line jumps between clear heights. */
 internal fun stepped(level: Float, steps: Int) = (level * (steps - 1)).roundToInt().toFloat() / (steps - 1)
 
@@ -112,13 +109,22 @@ class PulsePlotView(context: Context, attrs: AttributeSet?) : View(context, attr
         strokeCap = Paint.Cap.ROUND
     }
 
-    fun setLevel(rmsDb: Float) {
-        target = levelFromRms(rmsDb).let { if (animate) it else stepped(it, 5) }
+    /** Loudness 0..1 from the recorder, about 20 times a second. */
+    fun setLevel(level: Float) {
+        target = if (animate) level else stepped(level, 5)
         if (target > 0.12f) lastLoud = SystemClock.uptimeMillis()
         segmentPeak = maxOf(segmentPeak, target)
         segment.pushCapped(target, 600) // a minute of speech is plenty for one line
         if (!animate) shown = target
         invalidate()
+    }
+
+    /** Carries the stack over when the screen is rebuilt for the other display, so folding the phone loses no lines. */
+    fun takeOver(old: PulsePlotView) {
+        frozen += old.frozen
+        segment += old.segment
+        seed = old.seed
+        listening = old.listening
     }
 
     /** A sentence finished: its loudness over time becomes a permanent line. */
