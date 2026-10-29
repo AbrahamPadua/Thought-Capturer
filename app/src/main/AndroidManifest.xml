@@ -28,8 +28,7 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:taskAffinity=""
-            android:theme="@style/Theme.Capture.Dialog"
-            android:windowSoftInputMode="stateHidden">
+            android:windowSoftInputMode="stateHidden|adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M4,7 L20,7 M4,12 L20,12 M4,17 L20,17"
+        android:strokeColor="@color/ink_line" android:strokeWidth="1.5" android:strokeLineCap="round" />
+    <!-- knobs are filled with the ground so they cut the lines they sit on -->
+    <path android:pathData="M11,7 A2,2 0 1,0 7,7 A2,2 0 1,0 11,7 Z M17,12 A2,2 0 1,0 13,12 A2,2 0 1,0 17,12 Z M9,17 A2,2 0 1,0 5,17 A2,2 0 1,0 9,17 Z"
+        android:fillColor="@color/ink_ground" android:strokeColor="@color/ink_line" android:strokeWidth="1.5" />
+</vector>

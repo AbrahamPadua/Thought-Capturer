@@ -1,7 +1,6 @@
 package app.thoughtcapturer
 
 import android.app.Activity
-import android.app.job.JobScheduler
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -10,7 +9,9 @@ import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
@@ -52,14 +53,21 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     private fun refresh() {
         val p = prefs()
         val code = p.getString("user_code", null)
+        val signedIn = p.getString("refresh_token", null) != null
+        findViewById<TextView>(R.id.code).apply {
+            text = code
+            visibility = if (code != null) View.VISIBLE else View.GONE
+        }
         account.text = when {
-            code != null -> "Enter code $code at ${p.getString("verification_uri", null)} (it's copied). Then come back here."
-            p.getString("refresh_token", null) != null -> "Signed in. To-dos go to your To Do Tasks list, notes to the Capture section in OneNote."
+            code != null -> "Enter this code at ${p.getString("verification_uri", null)}. It's on your clipboard. Then come back here."
+            signedIn -> "Signed in. To-dos go to your To Do Tasks list, notes to the Capture section in OneNote."
             else -> p.getString("signin_error", null) ?: "Not signed in."
         }
-        val pending = getSystemService(JobScheduler::class.java).allPendingJobs.size
+        findViewById<Button>(R.id.signin).text = if (signedIn) "Sign in again" else "Sign in to Microsoft"
+        val s = status()
+        findViewById<LinearLayout>(R.id.queueStrip).showStatus(s)
         findViewById<TextView>(R.id.errors).text = listOfNotNull(
-            "$pending capture(s) waiting to sync.".takeIf { pending > 0 },
+            s.describe().ifEmpty { "Nothing waiting." },
             p.getString("last_error", null)?.let { "Last sync error: $it" },
             p.getString("gemini_error", null)?.let { "Last Gemini error (that capture was saved unsplit): $it" },
         ).joinToString("\n\n")

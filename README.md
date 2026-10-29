@@ -18,14 +18,14 @@ Updating from a version without OneNote notes? Install the new APK over the old 
 ### 2. Sign in to Microsoft
 
 1. Open **Capture** and allow the microphone.
-2. Tap **⚙** and then **Sign in to Microsoft**. The app copies a code and opens the Microsoft sign-in page.
+2. Tap the settings button (three sliders, top right) and then **Sign in to Microsoft**. The app copies a code and opens the Microsoft sign-in page.
 3. Paste the code and sign in with the same account your To Do uses. It asks to manage your tasks and to create OneNote notes. This is the same app registration canvas-todo-sync uses, so the app name will look familiar.
 4. Go back to Capture. It should say "Signed in."
 
 ### 3. Add your Gemini key
 
 1. Get a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
-2. Paste it into the **Gemini API key** box in ⚙. It saves when you leave the screen.
+2. Paste it into the **Gemini API key** field in Settings. It saves when you leave the screen.
 
 Without a key, each capture is saved as one to-do with exactly what you said, and nothing goes to OneNote.
 
@@ -43,22 +43,23 @@ Tap the icon and say "email professor about the lab report by Friday. Also, for 
 
 | You do | It does |
 |---|---|
-| Talk, pause, keep talking | Keeps listening and adds each sentence to the box |
+| Talk, pause, keep talking | Keeps listening. Each finished sentence moves up into the gray text and freezes into a new line in the plot |
 | Go quiet | Keeps listening. Only you stop it |
-| Tap **Done** | Saves and closes |
-| Tap the text box | Lets you type or fix a word while it keeps listening |
-| Touch the screen around the box | Nothing |
-| Tap **🎤** | Starts listening again after a speech error |
+| Tap **Done** (the white circle) | Saves; the lines fold into one and it closes |
+| Tap the keyboard button or the text | Lets you type or fix a word while it keeps listening |
+| Tap the lines after a speech error | Starts listening again |
 | Press back, go home, or flip it shut | Saves what's there, so a thought never gets lost by accident |
-| Tap **Cancel** | Throws it away |
+| Tap **✕** | Throws it away |
 
-The screen stays on while the box is open, so the cover screen can't time out mid-sentence. If you walk away without tapping Done, it stays on until you come back.
+The front line of the plot moves with your voice, so you can see it's hearing you. The colored blocks under the capture number show what your last capture became: yellow for each to-do, blue for a note, gray for anything still waiting to sync, red for a problem.
+
+The screen stays on while Capture is open, so the cover screen can't time out mid-sentence. If you walk away without tapping Done, it stays on until you come back.
 
 With no signal, captures wait in a queue and go out once you're back online, even after a reboot. If Gemini fails, that capture is still saved as one to-do with your exact words.
 
 ## When something's off
 
-Open **⚙**. It shows how many captures are waiting and the last error.
+Open Settings (the sliders button). Under **Queue** it shows what's waiting and the last error.
 
 - **"Not signed in" or "sign-in expired":** tap **Sign in to Microsoft** again. Anything waiting goes out right after.
 - **Gemini error:** check the key. Those captures were saved unsplit, so nothing is missing.

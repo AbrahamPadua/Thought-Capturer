@@ -1,72 +1,138 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- focusableInTouchMode on the root keeps the EditText from grabbing focus (and the keyboard) on open;
-     keepScreenOn stops the cover screen's short timeout from cutting off a recording -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- compact: the cover screen (about 400 x 440dp). Same ids as layout-h600dp/capture.xml, smaller everything -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
+    android:background="@color/ink_ground"
+    android:fitsSystemWindows="true"
+    android:keepScreenOn="true">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
     android:focusableInTouchMode="true"
-    android:keepScreenOn="true"
     android:orientation="vertical"
-    android:padding="20dp">
-
-    <TextView
-        android:id="@+id/status"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:accessibilityLiveRegion="polite"
-        android:text="Starting…"
-        android:textAppearance="?android:attr/textAppearanceMedium" />
-
-    <EditText
-        android:id="@+id/text"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:gravity="top"
-        android:hint="Say it, or tap here to type"
-        android:inputType="textMultiLine|textCapSentences"
-        android:maxLines="8"
-        android:minLines="3" />
+    android:paddingHorizontal="18dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="12dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <Button
-            android:id="@+id/settings"
-            style="?android:attr/borderlessButtonStyle"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:contentDescription="Settings"
-            android:text="⚙" />
-
-        <Button
-            android:id="@+id/mic"
-            style="?android:attr/borderlessButtonStyle"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:contentDescription="Listen again"
-            android:text="🎤" />
-
-        <View
+        <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-        <Button
+            <TextView
+                android:id="@+id/catalog"
+                style="@style/Capture.Label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:id="@+id/strip"
+                android:layout_width="wrap_content"
+                android:layout_height="6dp"
+                android:layout_marginTop="8dp"
+                android:importantForAccessibility="yes"
+                android:orientation="horizontal" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/settings"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/ring_button"
+            android:contentDescription="Settings"
+            android:src="@drawable/ic_tune" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/status"
+        style="@style/Capture.Hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:accessibilityLiveRegion="polite"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:textSize="13sp" />
+
+    <EditText
+        android:id="@+id/text"
+        style="@style/Capture.Said"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@null"
+        android:gravity="bottom"
+        android:importantForAutofill="no"
+        android:inputType="textMultiLine|textCapSentences"
+        android:maxLines="2"
+        android:padding="0dp"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/now"
+        style="@style/Capture.Now"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_marginTop="2dp"
+        android:accessibilityLiveRegion="polite"
+        android:autoSizeMaxTextSize="24sp"
+        android:autoSizeMinTextSize="15sp"
+        android:autoSizeTextType="uniform"
+        android:gravity="top"
+        android:hint="Start talking"
+        android:maxLines="2" />
+
+    <app.thoughtcapturer.PulsePlotView
+        android:id="@+id/plot"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_weight="1"
+        android:minHeight="16dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <ImageButton
             android:id="@+id/cancel"
-            style="?android:attr/borderlessButtonStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Cancel" />
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/ring_button"
+            android:contentDescription="Cancel and discard"
+            android:src="@drawable/ic_close" />
 
-        <Button
+        <ImageButton
             android:id="@+id/done"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Done" />
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_marginHorizontal="28dp"
+            android:background="@drawable/done_button"
+            android:contentDescription="Done, save this capture"
+            android:scaleType="center"
+            android:src="@drawable/ic_check"
+            android:tint="@color/ink_ground" />
+
+        <ImageButton
+            android:id="@+id/type"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/ring_button"
+            android:contentDescription="Type instead"
+            android:src="@drawable/ic_keyboard" />
     </LinearLayout>
 </LinearLayout>
+</FrameLayout>

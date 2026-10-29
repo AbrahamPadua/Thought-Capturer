@@ -93,7 +93,7 @@ fun msToken(vararg p: Pair<String, String>) =
 fun accessToken(ctx: Context): String {
     val p = ctx.prefs()
     val refresh = p.getString("refresh_token", null)
-        ?: throw IOException("Not signed in to Microsoft. Open settings (⚙) to sign in.")
+        ?: throw IOException("Not signed in to Microsoft. Open Settings to sign in.")
     val r = try {
         msToken("grant_type" to "refresh_token", "refresh_token" to refresh, "scope" to MS_SCOPE)
     } catch (e: HttpError) {
@@ -101,7 +101,7 @@ fun accessToken(ctx: Context): String {
         if ("invalid_grant" in e.body || "interaction_required" in e.body) {
             // drop the dead token so Settings stops saying "Signed in"; skip if a new sign-in already replaced it
             if (p.getString("refresh_token", null) == refresh) p.edit().remove("refresh_token").apply()
-            throw IOException("Microsoft sign-in expired. Open settings (⚙) to sign in again.")
+            throw IOException("Microsoft sign-in expired. Open Settings to sign in again.")
         }
         throw e
     }
@@ -195,7 +195,9 @@ class SaveJob : JobService() {
             // shortcut: a POST that lands but whose reply is lost gets sent again on retry (rare duplicate, never a lost capture)
             p.edit().putInt("${k}_done", i + 1).commit()
         }
-        p.edit().remove("${k}_split").remove("${k}_done").remove("last_error").apply()
+        p.edit().remove("${k}_split").remove("${k}_done").remove("last_error")
+            .putString("last_filed", "${tasks.size} ${if (note == null) 0 else 1}") // read by the code strip (Codes.kt)
+            .apply()
     }
 
     /** Gemini's JSON, or "" (meaning save unsplit) when there's no key or the call fails. */

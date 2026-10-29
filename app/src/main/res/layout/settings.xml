@@ -2,62 +2,128 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/ink_ground"
     android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:paddingHorizontal="24dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="40dp">
 
         <TextView
-            android:layout_width="match_parent"
+            style="@style/Capture.Title"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Microsoft To Do"
-            android:textAppearance="?android:attr/textAppearanceLarge" />
+            android:text="Settings" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="28dp"
+            android:background="@color/ink_faint" />
+
+        <TextView
+            style="@style/Capture.Label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Microsoft" />
 
         <TextView
             android:id="@+id/account"
+            style="@style/Capture.Body"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:accessibilityLiveRegion="polite"
-            android:textIsSelectable="true" />
+            android:layout_marginTop="10dp"
+            android:accessibilityLiveRegion="polite" />
 
-        <Button
-            android:id="@+id/signin"
+        <TextView
+            android:id="@+id/code"
+            style="@style/Capture.Code"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
+            android:textIsSelectable="true"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/signin"
+            style="@style/Capture.HairlineButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
             android:text="Sign in to Microsoft" />
 
-        <TextView
+        <View
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="1dp"
             android:layout_marginTop="32dp"
-            android:text="Gemini API key"
-            android:textAppearance="?android:attr/textAppearanceLarge" />
+            android:background="@color/ink_faint" />
 
         <TextView
+            style="@style/Capture.Label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Gemini key" />
+
+        <TextView
+            style="@style/Capture.Hint"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="10dp"
             android:text="Optional. With a key, one capture can become several to-dos with due dates, and details or rambling become an organized OneNote note. Without one, each capture is saved as a single to-do." />
 
         <EditText
             android:id="@+id/key"
+            style="@style/Capture.Body"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/field_underline"
             android:hint="Paste key"
             android:importantForAutofill="no"
             android:inputType="textPassword"
+            android:paddingVertical="12dp"
             android:singleLine="true" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="32dp"
+            android:background="@color/ink_faint" />
+
+        <TextView
+            style="@style/Capture.Label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Queue" />
+
+        <LinearLayout
+            android:id="@+id/queueStrip"
+            android:layout_width="wrap_content"
+            android:layout_height="6dp"
+            android:layout_marginTop="14dp"
+            android:importantForAccessibility="no"
+            android:orientation="horizontal" />
 
         <TextView
             android:id="@+id/errors"
+            style="@style/Capture.Body"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="12dp"
             android:textIsSelectable="true" />
+
+        <TextView
+            style="@style/Capture.Hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="In the strip, yellow blocks are to-dos, blue is a note, gray is waiting to sync, and red is a problem." />
     </LinearLayout>
 </ScrollView>
