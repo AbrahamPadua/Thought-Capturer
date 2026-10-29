@@ -13,17 +13,18 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 
-/** Opens already listening. Saves when you go quiet, tap Done, or leave; only Cancel throws it away. */
+/**
+ * Opens already listening and keeps listening until Done (save) or Cancel (discard). Pauses, taps on the
+ * text box and touches around the dialog don't stop it. Leaving (back, home, flipped shut) saves.
+ */
 class CaptureActivity : Activity(), RecognitionListener {
     private lateinit var status: TextView
     private lateinit var text: EditText
     private var recognizer: SpeechRecognizer? = null
-    private var heard = "" // text before the current speech segment
     private var closing = false
     private var askingPermission = false
 
@@ -42,14 +43,10 @@ class CaptureActivity : Activity(), RecognitionListener {
         super.onCreate(state)
         setContentView(R.layout.capture)
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        // on the small cover screen a stray touch next to the dialog is easy; it must not end the recording
+        setFinishOnTouchOutside(false)
         status = findViewById(R.id.status)
         text = findViewById(R.id.text)
-        text.setOnFocusChangeListener { _, focused ->
-            if (focused) {
-                recognizer?.cancel()
-                show("Typing. Tap Done to save.")
-            }
-        }
         findViewById<View>(R.id.done).setOnClickListener { save() }
         findViewById<View>(R.id.mic).setOnClickListener { listen() }
         findViewById<View>(R.id.cancel).setOnClickListener {
@@ -78,15 +75,11 @@ class CaptureActivity : Activity(), RecognitionListener {
     private fun listen() {
         if (closing) return
         if (!SpeechRecognizer.isRecognitionAvailable(this)) return show("No speech recognizer on this phone. Type instead.")
-        if (text.hasFocus()) {
-            text.clearFocus()
-            getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(text.windowToken, 0)
-        }
-        heard = text.text.toString()
         val r = recognizer ?: SpeechRecognizer.createSpeechRecognizer(this).also {
             it.setRecognitionListener(this)
             recognizer = it
         }
+        r.cancel() // 🎤 while already listening restarts instead of failing as busy
         r.startListening(
             Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                 .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -100,29 +93,28 @@ class CaptureActivity : Activity(), RecognitionListener {
 
     private fun best(b: Bundle?) = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
 
-    private fun join(a: String, b: String) = listOf(a.trim(), b.trim()).filter { it.isNotEmpty() }.joinToString(" ")
+    override fun onReadyForSpeech(params: Bundle?) = show("Listening… tap Done when you're finished.")
 
-    override fun onReadyForSpeech(params: Bundle?) = show("Listening… pause a few seconds or tap Done to save.")
-
+    // live words go in the status line, so they never overwrite what you're typing in the box
     override fun onPartialResults(b: Bundle?) {
-        val partial = best(b) ?: return
-        if (!text.hasFocus()) text.setText(join(heard, partial))
+        best(b)?.let { show("Listening… $it") }
     }
 
     override fun onResults(b: Bundle?) {
-        if (closing || text.hasFocus()) return
-        text.setText(join(heard, best(b).orEmpty()))
-        // keep listening through pauses; the silence timeout on the next round is what saves
-        text.post { listen() }
+        if (closing) return
+        best(b)?.takeIf { it.isNotBlank() }?.let { text.append(if (text.text.isBlank() || text.text.endsWith(" ")) it else " $it") }
+        show("Listening… tap Done when you're finished.")
+        // the recognizer ends after each sentence; start the next one right away
+        text.postDelayed({ listen() }, 250)
     }
 
     override fun onError(error: Int) {
-        if (closing || text.hasFocus()) return
-        val silence = error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
-        when {
-            silence && text.text.isNotBlank() -> save()
-            silence -> show("Didn't catch that. Tap 🎤 or type.")
-            else -> show("Speech error $error. Tap 🎤 or type.")
+        if (closing) return
+        when (error) {
+            // silence is a pause, not the end: keep listening until Done
+            SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT, SpeechRecognizer.ERROR_RECOGNIZER_BUSY ->
+                text.postDelayed({ listen() }, 250)
+            else -> show("Speech error $error. Tap 🎤 to listen again, or type.")
         }
     }
 
@@ -143,7 +135,7 @@ class CaptureActivity : Activity(), RecognitionListener {
 
     override fun onStop() {
         super.onStop()
-        // tapped outside, pressed back or home, or flipped shut: keep what was said
+        // pressed back or home, or flipped shut: keep what was said
         if (!isChangingConfigurations && !askingPermission) save()
     }
 

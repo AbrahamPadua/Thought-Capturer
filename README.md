@@ -1,6 +1,6 @@
 # Capture
 
-A one-tap thought capturer for Android. Tap the icon and it's already listening. Say what's on your mind, stop talking for a few seconds, and it saves to your Microsoft To Do **Tasks** list. If you've added a Gemini key, a ramble like "email my professor about the lab by Friday and buy groceries" turns into two tasks, and the first one gets Friday's date.
+A one-tap thought capturer for Android. Tap the icon and it's already listening. Talk for as long as you need, tap **Done**, and it saves to your Microsoft To Do **Tasks** list. If you've added a Gemini key, a ramble like "email my professor about the lab by Friday and buy groceries" turns into two tasks, and the first one gets Friday's date.
 
 It only captures. Sorting and planning still happen in To Do when you review the list, ideally once or twice a day.
 
@@ -29,7 +29,7 @@ Without a key, each capture is saved as one task with exactly what you said.
 
 ### 4. Try it
 
-Tap the icon and say "email professor about the lab report by Friday and buy groceries." Pause. You'll see "Captured," and the tasks show up in To Do a few seconds later. The full sentence you said goes in each task's note.
+Tap the icon and say "email professor about the lab report by Friday and buy groceries." Tap **Done**. You'll see "Captured," and the tasks show up in To Do a few seconds later. The full sentence you said goes in each task's note.
 
 ## Make it one tap from anywhere on the Flip
 
@@ -41,13 +41,16 @@ Tap the icon and say "email professor about the lab report by Friday and buy gro
 
 | You do | It does |
 |---|---|
-| Talk with short pauses | Keeps listening and adds to the text |
-| Go quiet for a few seconds | Saves and closes |
-| Tap **Done** | Saves now |
-| Tap the text box | Stops listening so you can type or fix a word, then tap **Done** |
-| Tap **🎤** | Starts listening again |
-| Press back, tap outside, go home, or flip it shut | Saves what's there, so a thought never gets lost by accident |
+| Talk, pause, keep talking | Keeps listening and adds each sentence to the box |
+| Go quiet | Keeps listening. Only you stop it |
+| Tap **Done** | Saves and closes |
+| Tap the text box | Lets you type or fix a word while it keeps listening |
+| Touch the screen around the box | Nothing |
+| Tap **🎤** | Starts listening again after a speech error |
+| Press back, go home, or flip it shut | Saves what's there, so a thought never gets lost by accident |
 | Tap **Cancel** | Throws it away |
+
+The screen stays on while the box is open, so the cover screen can't time out mid-sentence. If you walk away without tapping Done, it stays on until you come back.
 
 With no signal, captures wait in a queue and go out once you're back online, even after a reboot. If Gemini fails, that capture is still saved as one task with your exact words.
 
