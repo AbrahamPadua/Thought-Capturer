@@ -58,8 +58,10 @@ class CaptureActivity : Activity(), RecognitionListener {
         }
         findViewById<View>(R.id.settings).setOnClickListener {
             save()
-            startActivity(Intent(this, SettingsActivity::class.java))
+            // own task: this dialog's task is hidden from Recents, and Settings must be easy to return to from the browser
+            startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
+        SettingsActivity.pollSignIn(applicationContext)
         if (checkSelfPermission(RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) listen()
         else {
             askingPermission = true
