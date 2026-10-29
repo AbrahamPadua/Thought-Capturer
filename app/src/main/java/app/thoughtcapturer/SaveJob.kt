@@ -216,6 +216,9 @@ class SaveJob : JobService() {
             val id = p.getInt("next_job", 1)
             p.edit().putInt("next_job", id + 1).commit()
             val job = JobInfo.Builder(id, ComponentName(ctx, SaveJob::class.java))
+                // expedited: runs right away, and a warm phone (thermal "moderate", common while charging) holds back
+                // normal jobs but not these; past Android's expedited quota it quietly becomes a normal job
+                .setExpedited(true)
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
                 .setPersisted(true)
                 .setBackoffCriteria(30_000, JobInfo.BACKOFF_POLICY_EXPONENTIAL)

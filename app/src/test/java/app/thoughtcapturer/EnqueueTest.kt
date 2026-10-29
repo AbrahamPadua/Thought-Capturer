@@ -1,7 +1,10 @@
 package app.thoughtcapturer
 
 import android.Manifest
+import android.app.job.JobScheduler
 import android.content.pm.PackageManager
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -13,6 +16,17 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34]) // Robolectric needs Java 21 for SDK 35+, and this PC builds with JDK 17
 class EnqueueTest {
     private val ctx = RuntimeEnvironment.getApplication()
+
+    // Android's own JobInfo checks run here, so a disallowed mix (say, expedited plus a delay) fails this test
+    @Test
+    fun schedulesAnExpeditedNetworkUpload() {
+        assertTrue(SaveJob.enqueue(ctx, "buy milk"))
+        val job = ctx.getSystemService(JobScheduler::class.java).allPendingJobs.single()
+        assertTrue(job.isExpedited)
+        assertTrue(job.isPersisted)
+        assertNotNull(job.requiredNetwork)
+        assertEquals("buy milk", job.extras.getString("text"))
+    }
 
     // without it, Android 14+ throws on schedule() and every capture falls back to the clipboard
     @Test
