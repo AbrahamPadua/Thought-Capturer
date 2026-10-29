@@ -54,7 +54,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         val code = p.getString("user_code", null)
         account.text = when {
             code != null -> "Enter code $code at ${p.getString("verification_uri", null)} (it's copied). Then come back here."
-            p.getString("refresh_token", null) != null -> "Signed in. Captures go to your Tasks list."
+            p.getString("refresh_token", null) != null -> "Signed in. To-dos go to your To Do Tasks list, notes to the Capture section in OneNote."
             else -> p.getString("signin_error", null) ?: "Not signed in."
         }
         val pending = getSystemService(JobScheduler::class.java).allPendingJobs.size

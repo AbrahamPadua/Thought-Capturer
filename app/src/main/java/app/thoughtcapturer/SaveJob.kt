@@ -22,27 +22,44 @@ import org.json.JSONObject
 
 // Same Azure app registration as canvas-todo-sync, so To Do already trusts it.
 const val MS_CLIENT_ID = "d399042a-c6a4-4b4e-9d71-2349c92b760a"
-const val MS_SCOPE = "Tasks.ReadWrite offline_access"
+const val MS_SCOPE = "Tasks.ReadWrite Notes.Create offline_access"
 const val MS_LOGIN = "https://login.microsoftonline.com/common/oauth2/v2.0"
 const val TODO_LISTS = "https://graph.microsoft.com/v1.0/me/todo/lists"
+// sectionName: OneNote finds or creates this section in the default notebook
+const val ONENOTE_PAGES = "https://graph.microsoft.com/v1.0/me/onenote/pages?sectionName=Capture"
 // shortcut: the alias follows Google's newest Flash model; pin a version if its output ever drifts.
 const val GEMINI_MODEL = "gemini-flash-latest"
 
 fun Context.prefs(): SharedPreferences = getSharedPreferences("capture", Context.MODE_PRIVATE)
 
 data class Task(val title: String, val due: String?)
+data class Note(val title: String, val points: List<String>)
+data class Split(val tasks: List<Task>, val note: Note?)
 
-/** Gemini's JSON array to tasks. Anything unusable falls back to the raw capture as one task. */
-fun toTasks(json: String?, raw: String): List<Task> {
+/** Gemini's JSON to tasks and an optional note. Anything unusable falls back to the raw capture as one task. */
+fun parseSplit(json: String?, raw: String): Split {
     val parsed = runCatching {
-        val a = JSONArray(json ?: "[]")
-        (0 until a.length()).map { a.getJSONObject(it) }
+        val o = JSONObject(json ?: "")
+        val a = o.optJSONArray("tasks") ?: JSONArray()
+        val tasks = (0 until a.length()).map { a.getJSONObject(it) }
             // a real date only: To Do rejects "2027-02-29", and that would fail the upload forever
             .map { Task(it.optString("title").trim(), it.optString("due").takeIf { d -> runCatching { LocalDate.parse(d) }.isSuccess }) }
             .filter { it.title.isNotEmpty() }
-    }.getOrDefault(emptyList())
+        val n = o.optJSONObject("note")
+        val points = n?.optJSONArray("points")?.let { p -> (0 until p.length()).map { p.optString(it).trim() } }.orEmpty().filter { it.isNotEmpty() }
+        Split(tasks, n?.takeIf { points.isNotEmpty() }?.let { Note(it.optString("title").trim().ifEmpty { "Capture" }, points) })
+    }.getOrNull()
+    val split = parsed?.takeIf { it.tasks.isNotEmpty() || it.note != null } ?: Split(listOf(Task(raw, null)), null)
     // To Do caps titles at 255 chars; the full capture also goes in the task note
-    return parsed.ifEmpty { listOf(Task(raw, null)) }.map { it.copy(title = it.title.take(255)) }
+    return split.copy(tasks = split.tasks.map { it.copy(title = it.title.take(255)) })
+}
+
+/** The OneNote page. Everything is escaped: a stray "<" or "&" in speech would get the page rejected and stall the upload. */
+fun noteHtml(note: Note, raw: String, at: Long): String {
+    fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+    val created = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(Date(at)) // the time you said it, not the upload time
+    return "<!DOCTYPE html><html><head><title>${esc(note.title)}</title><meta name=\"created\" content=\"$created\" /></head><body>" +
+        "<ul>${note.points.joinToString("") { "<li>${esc(it)}</li>" }}</ul><p><i>What you said:</i> ${esc(raw)}</p></body></html>"
 }
 
 class HttpError(val code: Int, val body: String) : IOException("HTTP $code ${body.take(300)}")
@@ -79,7 +96,8 @@ fun accessToken(ctx: Context): String {
     val r = try {
         msToken("grant_type" to "refresh_token", "refresh_token" to refresh, "scope" to MS_SCOPE)
     } catch (e: HttpError) {
-        if ("invalid_grant" in e.body) {
+        // invalid_grant also covers a sign-in made before a scope was added (no consent for Notes yet)
+        if ("invalid_grant" in e.body || "interaction_required" in e.body) {
             // drop the dead token so Settings stops saying "Signed in"; skip if a new sign-in already replaced it
             if (p.getString("refresh_token", null) == refresh) p.edit().remove("refresh_token").apply()
             throw IOException("Microsoft sign-in expired. Open settings (⚙) to sign in again.")
@@ -106,14 +124,17 @@ fun defaultListId(get: (String) -> JSONObject): String {
 fun geminiSplit(text: String, at: Long, key: String): String {
     val now = SimpleDateFormat("EEEE, yyyy-MM-dd, h:mm a", Locale.US).format(Date(at))
     val prompt = """
-        It is $now. Turn this voice note into to-do tasks.
-        - One task per separate thing to do. If it is one thing, return one task.
-        - title: short, starts with a verb, keeps the speaker's own words and names. Add nothing they didn't say.
-        - due: YYYY-MM-DD, only when they gave or implied a date ("by Friday", "tomorrow"). Otherwise leave it out.
+        It is $now. Sort this voice note into to-do tasks and a note.
+        - tasks: things the speaker needs to do, one per separate action. title: short, starts with a verb, keeps their own words and names. due: YYYY-MM-DD, only when they gave or implied a date ("by Friday", "tomorrow"); otherwise leave it out.
+        - note: everything else worth keeping, like details, ideas, explanations and thinking out loud. title: a few words naming the topic. points: that content as short, clear bullet points in a sensible order, keeping every detail and the speaker's wording. Add no facts they didn't say.
+        - If it is all to-dos, leave out the note. If it is all rambling, return an empty tasks list.
         Voice note: $text
     """.trimIndent()
     val schema = JSONObject(
-        """{"type":"ARRAY","items":{"type":"OBJECT","properties":{"title":{"type":"STRING"},"due":{"type":"STRING"}},"required":["title"]}}"""
+        """{"type":"OBJECT","properties":{""" +
+            """"tasks":{"type":"ARRAY","items":{"type":"OBJECT","properties":{"title":{"type":"STRING"},"due":{"type":"STRING"}},"required":["title"]}},""" +
+            """"note":{"type":"OBJECT","properties":{"title":{"type":"STRING"},"points":{"type":"ARRAY","items":{"type":"STRING"}}},"required":["title","points"]}""" +
+            """},"required":["tasks"]}"""
     )
     val req = JSONObject()
         .put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
@@ -147,24 +168,30 @@ class SaveJob : JobService() {
 
     private fun save(params: JobParameters) {
         val raw = params.extras.getString("text")!!
+        val at = params.extras.getLong("at")
         val p = prefs()
         val k = "job${params.jobId}"
-        // cache the split so a retry after a partial upload doesn't ask Gemini again and get different tasks
+        // cache the split so a retry after a partial upload doesn't ask Gemini again and get a different split
         val split = p.getString("${k}_split", null)
-            ?: split(raw, params.extras.getLong("at")).also { p.edit().putString("${k}_split", it).commit() }
-        val tasks = toTasks(split, raw)
+            ?: split(raw, at).also { p.edit().putString("${k}_split", it).commit() }
+        val (tasks, note) = parseSplit(split, raw)
         val token = accessToken(this)
         val auth = mapOf("Authorization" to "Bearer $token")
-        val listId = defaultListId { http(it, headers = auth) }
+        val listId by lazy { defaultListId { http(it, headers = auth) } } // a note-only capture never needs it
         // Graph wants Windows zone names ("Pacific Standard Time"), same as canvas-todo-sync sends
         val tz = android.icu.util.TimeZone.getWindowsID(java.util.TimeZone.getDefault().id) ?: "UTC"
-        for (i in p.getInt("${k}_done", 0) until tasks.size) {
-            val t = tasks[i]
-            val task = JSONObject().put("title", t.title)
-            if (t.title != raw) task.put("body", JSONObject().put("content", raw).put("contentType", "text"))
-            if (t.due != null) task.put("dueDateTime", JSONObject().put("dateTime", "${t.due}T00:00:00").put("timeZone", tz))
-            http("$TODO_LISTS/$listId/tasks", task.toString(), headers = auth)
-            // shortcut: a POST that lands but whose reply is lost gets sent again on retry (rare duplicate, never a lost task)
+        // tasks first, then the note; the done counter lets a retry resume after the last upload that landed
+        for (i in p.getInt("${k}_done", 0) until tasks.size + (if (note == null) 0 else 1)) {
+            if (i < tasks.size) {
+                val t = tasks[i]
+                val task = JSONObject().put("title", t.title)
+                if (t.title != raw) task.put("body", JSONObject().put("content", raw).put("contentType", "text"))
+                if (t.due != null) task.put("dueDateTime", JSONObject().put("dateTime", "${t.due}T00:00:00").put("timeZone", tz))
+                http("$TODO_LISTS/$listId/tasks", task.toString(), headers = auth)
+            } else {
+                http(ONENOTE_PAGES, noteHtml(note!!, raw, at), "text/html", auth)
+            }
+            // shortcut: a POST that lands but whose reply is lost gets sent again on retry (rare duplicate, never a lost capture)
             p.edit().putInt("${k}_done", i + 1).commit()
         }
         p.edit().remove("${k}_split").remove("${k}_done").remove("last_error").apply()

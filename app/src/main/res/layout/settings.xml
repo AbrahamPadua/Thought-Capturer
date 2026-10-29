@@ -42,7 +42,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Optional. With a key, one capture can become several tasks with due dates. Without one, each capture is saved as a single task." />
+            android:text="Optional. With a key, one capture can become several to-dos with due dates, and details or rambling become an organized OneNote note. Without one, each capture is saved as a single to-do." />
 
         <EditText
             android:id="@+id/key"

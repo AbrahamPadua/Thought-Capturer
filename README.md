@@ -1,8 +1,8 @@
 # Capture
 
-A one-tap thought capturer for Android. Tap the icon and it's already listening. Talk for as long as you need, tap **Done**, and it saves to your Microsoft To Do **Tasks** list. If you've added a Gemini key, a ramble like "email my professor about the lab by Friday and buy groceries" turns into two tasks, and the first one gets Friday's date.
+A one-tap thought capturer for Android. Tap the icon and it's already listening. Talk for as long as you need, tap **Done**, and it saves. To-dos go to your Microsoft To Do **Tasks** list. With a Gemini key, "email my professor about the lab by Friday and buy groceries" turns into two tasks, and the first one gets Friday's date. Details and thinking out loud become an organized note in OneNote, in a section called **Capture**.
 
-It only captures. Sorting and planning still happen in To Do when you review the list, ideally once or twice a day.
+It only captures. Sorting and planning still happen in To Do and OneNote when you review them, ideally once or twice a day.
 
 ## Morning setup (about 5 minutes)
 
@@ -13,11 +13,13 @@ It only captures. Sorting and planning still happen in To Do when you review the
 3. Android will ask you to allow installs from OneDrive. Allow it, go back, and tap **Install**.
 4. Play Protect may warn about an unknown app, since you built it yourself. Tap **More details**, then **Install anyway**.
 
+Updating from a version without OneNote notes? Install the new APK over the old one, then do step 2 again. Notes need a permission the old sign-in didn't ask for, and captures wait in the queue until you sign in.
+
 ### 2. Sign in to Microsoft
 
 1. Open **Capture** and allow the microphone.
 2. Tap **⚙** and then **Sign in to Microsoft**. The app copies a code and opens the Microsoft sign-in page.
-3. Paste the code and sign in with the same account your To Do uses. This is the same app registration canvas-todo-sync uses, so the consent screen will look familiar.
+3. Paste the code and sign in with the same account your To Do uses. It asks to manage your tasks and to create OneNote notes. This is the same app registration canvas-todo-sync uses, so the app name will look familiar.
 4. Go back to Capture. It should say "Signed in."
 
 ### 3. Add your Gemini key
@@ -25,11 +27,11 @@ It only captures. Sorting and planning still happen in To Do when you review the
 1. Get a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
 2. Paste it into the **Gemini API key** box in ⚙. It saves when you leave the screen.
 
-Without a key, each capture is saved as one task with exactly what you said.
+Without a key, each capture is saved as one to-do with exactly what you said, and nothing goes to OneNote.
 
 ### 4. Try it
 
-Tap the icon and say "email professor about the lab report by Friday and buy groceries." Tap **Done**. You'll see "Captured," and the tasks show up in To Do a few seconds later. The full sentence you said goes in each task's note.
+Tap the icon and say "email professor about the lab report by Friday. Also, for the vest I'm thinking 32 motors at 40 hertz." Tap **Done**. The to-do shows up in To Do a few seconds later, and a note about the vest shows up in OneNote under **Capture**. Both keep the full text of what you said.
 
 ## Make it one tap from anywhere on the Flip
 
@@ -52,7 +54,7 @@ Tap the icon and say "email professor about the lab report by Friday and buy gro
 
 The screen stays on while the box is open, so the cover screen can't time out mid-sentence. If you walk away without tapping Done, it stays on until you come back.
 
-With no signal, captures wait in a queue and go out once you're back online, even after a reboot. If Gemini fails, that capture is still saved as one task with your exact words.
+With no signal, captures wait in a queue and go out once you're back online, even after a reboot. If Gemini fails, that capture is still saved as one to-do with your exact words.
 
 ## When something's off
 
@@ -60,10 +62,11 @@ Open **⚙**. It shows how many captures are waiting and the last error.
 
 - **"Not signed in" or "sign-in expired":** tap **Sign in to Microsoft** again. Anything waiting goes out right after.
 - **Gemini error:** check the key. Those captures were saved unsplit, so nothing is missing.
+- **OneNote error:** sign in again. A sign-in from before notes existed can't create them.
 
 ## Privacy
 
-Your voice goes to the phone's speech service (Samsung's or Google's, whichever is the default). The text goes to Gemini (only if you added a key) and to Microsoft To Do. The Microsoft sign-in and the Gemini key stay in the app's private storage and are kept out of phone backups.
+Your voice goes to the phone's speech service (Samsung's or Google's, whichever is the default). The text goes to Gemini (only if you added a key), Microsoft To Do and OneNote. The Microsoft sign-in and the Gemini key stay in the app's private storage and are kept out of phone backups.
 
 ## Building it again
 
@@ -78,5 +81,5 @@ The APK lands in `app\build\outputs\apk\debug\app-debug.apk`. Builds from this P
 ## Where things are
 
 - `app/src/main/java/app/thoughtcapturer/CaptureActivity.kt`: the listening dialog
-- `app/src/main/java/app/thoughtcapturer/SaveJob.kt`: the offline queue plus the Gemini and To Do calls
+- `app/src/main/java/app/thoughtcapturer/SaveJob.kt`: the offline queue plus the Gemini, To Do and OneNote calls
 - `app/src/main/java/app/thoughtcapturer/SettingsActivity.kt`: Microsoft sign-in and the Gemini key
