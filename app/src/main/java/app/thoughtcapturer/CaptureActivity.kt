@@ -19,6 +19,7 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.StyleSpan
 import android.util.Log
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
@@ -117,7 +118,10 @@ class CaptureActivity : Activity(), RecognitionListener {
             if (!focused && typed.text.isBlank()) typed.visibility = View.GONE
             render()
         }
-        findViewById<View>(R.id.done).setOnClickListener { save(animate = true) }
+        findViewById<View>(R.id.done).setOnClickListener {
+            it.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            save(animate = true)
+        }
         findViewById<View>(R.id.type).setOnClickListener { type() }
         findViewById<View>(R.id.cancel).setOnClickListener { cancel() }
         findViewById<View>(R.id.settings).setOnClickListener {
@@ -163,6 +167,8 @@ class CaptureActivity : Activity(), RecognitionListener {
             return micProblem("Couldn't open the microphone. Tap the lines to try again, or type.")
         }
         recorder = r
+        // a buzz says it's listening, so a capture can start without looking; post waits until the view can buzz
+        plot.post { plot.performHapticFeedback(HapticFeedbackConstants.CONFIRM) }
         micError = false
         plot.isClickable = false
         plot.listening = true
