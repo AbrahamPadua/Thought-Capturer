@@ -320,7 +320,10 @@ class SaveJob : JobService() {
                     http("$TODO_LISTS/$listId/tasks", taskJson(tasks[up.task], raw, tz).toString(), headers = auth).getString("id"))
                 is Upload.Step -> http("$TODO_LISTS/$listId/tasks/${p.getString("${k}_task${up.task}", null)}/checklistItems",
                     JSONObject().put("displayName", tasks[up.task].steps[up.step]).toString(), headers = auth)
-                Upload.Page -> http(ONENOTE_PAGES, noteHtml(note!!, raw, at), "text/html", auth)
+                Upload.Page -> {
+                    val page = http(ONENOTE_PAGES, noteHtml(note!!, raw, at), "text/html", auth)
+                    stick(stickiesFor(k, note, at, page.optJSONObject("links")))
+                }
             }
             // shortcut: a POST that lands but whose reply is lost gets sent again on retry (rare duplicate, never a lost capture)
             e.commit()

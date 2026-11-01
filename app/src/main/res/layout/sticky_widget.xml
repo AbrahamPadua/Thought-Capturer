@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the sticky note widget: Later lines, then notes. Widgets take only a few view classes, so no custom views here -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_ground"
+    android:padding="12dp">
+
+    <ListView
+        android:id="@+id/list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:divider="@color/ink_faint"
+        android:dividerHeight="1dp"
+        android:scrollbars="none" />
+
+    <TextView
+        android:id="@+id/empty"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fontFamily="@font/barlow_regular"
+        android:gravity="center"
+        android:padding="8dp"
+        android:text="Nothing parked. Say &quot;maybe I should&quot; in a capture and it shows up here."
+        android:textColor="@color/ink_muted"
+        android:textSize="15sp" />
+</FrameLayout>

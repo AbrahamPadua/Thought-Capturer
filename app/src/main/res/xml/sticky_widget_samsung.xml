@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- offers the widget on the Galaxy Flip's cover screen (Settings > Cover screen > Widgets) -->
+<samsung-appwidget-provider display="sub_screen" />
