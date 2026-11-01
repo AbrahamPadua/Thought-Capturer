@@ -18,9 +18,10 @@ class GuardService : AccessibilityService() {
     private var lastInterruptMs = 0L
     private var lastGeminiCheckMs = 0L
     private var lastGeminiHeaders = emptyList<String>()
-    private var consecVideos = 0
-    private var wasInShortForm = false
-    private var lastShortFormTickMs = 0L
+    internal var consecVideos = 0
+    internal var wasInShortForm = false
+    internal var lastShortFormTickMs = 0L
+    internal var lastScrollCountMs = 0L
     private var launcherPkg: String? = null
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -57,30 +58,7 @@ class GuardService : AccessibilityService() {
         val isShort = kind is ScreenKind.ShortForm
         val nowMs = System.currentTimeMillis()
 
-        if (isShort) {
-            if (!wasInShortForm) {
-                lastShortFormTickMs = nowMs
-            } else {
-                val elapsedSec = ((nowMs - lastShortFormTickMs) / 1000).toInt()
-                if (elapsedSec >= 1) {
-                    updateGuardStats { it.copy(shortFormSec = it.shortFormSec + elapsedSec) }
-                    lastShortFormTickMs = nowMs
-                }
-            }
-        } else {
-            flushShortFormTime()
-        }
-
-        if (isShort) {
-            if (eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
-                consecVideos++
-            }
-        } else {
-            consecVideos = 0
-        }
-
-        val enteringShortForm = isShort && !wasInShortForm
-        wasInShortForm = isShort
+        val enteringShortForm = trackShortForm(isShort, eventType, nowMs)
 
         val p = prefs()
         val cfg = guardConfig()
@@ -189,9 +167,33 @@ class GuardService : AccessibilityService() {
         return pkg == launcherPkg
     }
 
-    private fun flushShortFormTime() {
+    internal fun trackShortForm(isShort: Boolean, eventType: Int, nowMs: Long): Boolean {
+        if (isShort) {
+            if (!wasInShortForm) {
+                lastShortFormTickMs = nowMs
+            } else {
+                val elapsedSec = ((nowMs - lastShortFormTickMs) / 1000).toInt()
+                if (elapsedSec >= 1) {
+                    updateGuardStats { it.copy(shortFormSec = it.shortFormSec + elapsedSec) }
+                    lastShortFormTickMs = nowMs
+                }
+            }
+            if (eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && nowMs - lastScrollCountMs >= 1500L) {
+                consecVideos++
+                lastScrollCountMs = nowMs
+            }
+        } else {
+            flushShortFormTime(nowMs)
+            consecVideos = 0
+            lastScrollCountMs = 0L
+        }
+        val enteringShortForm = isShort && !wasInShortForm
+        wasInShortForm = isShort
+        return enteringShortForm
+    }
+
+    internal fun flushShortFormTime(now: Long = System.currentTimeMillis()) {
         if (wasInShortForm && lastShortFormTickMs > 0L) {
-            val now = System.currentTimeMillis()
             val elapsedSec = ((now - lastShortFormTickMs) / 1000).toInt()
             if (elapsedSec > 0) {
                 updateGuardStats { it.copy(shortFormSec = it.shortFormSec + elapsedSec) }

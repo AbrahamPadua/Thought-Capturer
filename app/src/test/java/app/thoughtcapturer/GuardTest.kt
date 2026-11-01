@@ -335,4 +335,30 @@ class GuardTest {
         assertEquals("Accountability: 30s countdown + notice", acctBtn.text.toString())
         controller.destroy()
     }
+
+    @Test
+    fun guardServiceDebouncesScrollsAndTracksShortFormTime() {
+        val svc = org.robolectric.Robolectric.setupService(GuardService::class.java)
+        val scroll = android.view.accessibility.AccessibilityEvent.TYPE_VIEW_SCROLLED
+        val content = android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+
+        // Entering short-form starts the timer
+        assertTrue(svc.trackShortForm(true, content, 10_000L))
+        assertEquals(0, svc.consecVideos)
+
+        // Rapid scroll events within 1.5s count as only 1 video swipe
+        assertFalse(svc.trackShortForm(true, scroll, 10_200L))
+        assertFalse(svc.trackShortForm(true, scroll, 10_500L))
+        assertFalse(svc.trackShortForm(true, scroll, 11_000L))
+        assertEquals(1, svc.consecVideos)
+
+        // Next swipe after 1.5s increments to 2
+        assertFalse(svc.trackShortForm(true, scroll, 12_000L))
+        assertEquals(2, svc.consecVideos)
+
+        // Leaving short-form flushes elapsed seconds (5s) and resets video count
+        assertFalse(svc.trackShortForm(false, content, 15_000L))
+        assertEquals(0, svc.consecVideos)
+        assertEquals(5, svc.guardStats().shortFormSec)
+    }
 }
