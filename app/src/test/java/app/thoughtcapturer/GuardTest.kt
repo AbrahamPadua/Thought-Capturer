@@ -407,6 +407,18 @@ class GuardTest {
     }
 
     @Test
+    fun countdownSendsNoSecondNoticeWithinTwoHours() {
+        ctx.saveGuardConfig(GuardConfig(stage = EvalStage.GUARD_ACCOUNTABILITY, accountabilityMode = AccountabilityMode.CONSEQUENCE, violationThreshold = 2, partnerTarget = "+15555550100"))
+        ctx.updateGuardStats { it.copy(overrides = 1) }
+        ctx.prefs().edit().putLong("guard_last_notified", System.currentTimeMillis() - 3600_000L).commit()
+        val intent = android.content.Intent(ctx, GuardActivity::class.java).putExtra("triggerCountdown", true)
+        val activity = org.robolectric.Robolectric.buildActivity(GuardActivity::class.java, intent).setup().get()
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(31))
+        assertEquals("Your partner was already told in the last 2 hours.", activity.findViewById<android.widget.TextView>(R.id.countdownText).text.toString())
+        assertEquals(0, ctx.guardStats().notificationsSent)
+    }
+
+    @Test
     fun lockedScreenTimeIsNotCountedAsWatching() {
         val svc = org.robolectric.Robolectric.setupService(GuardService::class.java)
         val content = android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED

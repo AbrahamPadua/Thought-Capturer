@@ -31,7 +31,6 @@ class GuardActivity : Activity() {
                 countdownText.text = "${countdownSeconds}s to return to task before accountability notice is sent"
                 handler.postDelayed(this, 1000L)
             } else {
-                countdownText.text = "Accountability notice sent."
                 sendNotice()
             }
         }
@@ -247,12 +246,22 @@ class GuardActivity : Activity() {
     }
 
     private fun sendNotice() {
+        val cfg = guardConfig()
+        val last = prefs().getLong("guard_last_notified", 0L)
+        // +1: this interruption is the one that crossed the threshold, as when the countdown was started
+        if (!shouldNotifyPartner(cfg.stage, cfg.accountabilityMode, guardStats().overrides + 1, cfg.violationThreshold, last, System.currentTimeMillis())) {
+            countdownText.text = "Your partner was already told in the last 2 hours."
+            return
+        }
+        countdownText.text = "Sending the accountability notice…"
         thread {
-            val cfg = guardConfig()
-            val msg = accountabilityMessage(cfg.accountabilityMode, focusTitle)
-            if (sendAccountabilityNotice(this, cfg.partnerTarget, msg)) {
+            val sent = sendAccountabilityNotice(this, cfg.partnerTarget, accountabilityMessage(cfg.accountabilityMode, focusTitle))
+            if (sent) {
                 prefs().edit().putLong("guard_last_notified", System.currentTimeMillis()).apply()
                 updateGuardStats { it.copy(notificationsSent = it.notificationsSent + 1) }
+            }
+            runOnUiThread {
+                countdownText.text = if (sent) "Accountability notice sent." else "Couldn't send the notice. Check the partner number or URL in Settings."
             }
         }
     }
