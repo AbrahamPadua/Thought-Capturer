@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
@@ -25,6 +26,14 @@ import org.json.JSONObject
 class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeListener {
     private lateinit var account: TextView
     private lateinit var key: EditText
+    private lateinit var guardStatus: TextView
+    private lateinit var guardEnable: Button
+    private lateinit var guardCalendar: Button
+    private lateinit var guardStage: Button
+    private lateinit var guardAccountability: Button
+    private lateinit var focusTask: EditText
+    private lateinit var leisureBudget: EditText
+    private lateinit var partnerTarget: EditText
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
@@ -33,6 +42,49 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         key = findViewById(R.id.key)
         key.setText(prefs().getString("gemini_key", ""))
         findViewById<View>(R.id.signin).setOnClickListener { signIn() }
+
+        guardStatus = findViewById(R.id.guardStatus)
+        guardEnable = findViewById(R.id.guardEnable)
+        guardCalendar = findViewById(R.id.guardCalendar)
+        guardStage = findViewById(R.id.guardStage)
+        guardAccountability = findViewById(R.id.guardAccountability)
+        focusTask = findViewById(R.id.focusTask)
+        leisureBudget = findViewById(R.id.leisureBudget)
+        partnerTarget = findViewById(R.id.partnerTarget)
+
+        val cfg = guardConfig()
+        focusTask.setText(cfg.focusTask)
+        leisureBudget.setText(cfg.leisureBudgetMin.toString())
+        partnerTarget.setText(cfg.partnerTarget)
+
+        guardEnable.setOnClickListener {
+            startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+
+        guardCalendar.setOnClickListener {
+            requestPermissions(arrayOf(android.Manifest.permission.READ_CALENDAR), 102)
+        }
+
+        guardStage.setOnClickListener {
+            val current = guardConfig()
+            val stages = EvalStage.entries
+            val next = stages[(current.stage.ordinal + 1) % stages.size]
+            saveGuardConfig(current.copy(stage = next))
+            refresh()
+        }
+
+        guardAccountability.setOnClickListener {
+            val current = guardConfig()
+            val modes = AccountabilityMode.entries
+            val next = modes[(current.accountabilityMode.ordinal + 1) % modes.size]
+            saveGuardConfig(current.copy(accountabilityMode = next))
+            if (next != AccountabilityMode.OFF && partnerTarget.text.any { it.isDigit() }) {
+                if (checkSelfPermission(android.Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(arrayOf(android.Manifest.permission.SEND_SMS), 101)
+                }
+            }
+            refresh()
+        }
     }
 
     override fun onResume() {
@@ -46,6 +98,18 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         super.onPause()
         prefs().unregisterOnSharedPreferenceChangeListener(this)
         prefs().edit().putString("gemini_key", key.text.toString().trim()).apply()
+        val cfg = guardConfig()
+        val budget = leisureBudget.text.toString().toIntOrNull() ?: cfg.leisureBudgetMin
+        saveGuardConfig(cfg.copy(
+            focusTask = focusTask.text.toString().trim(),
+            leisureBudgetMin = budget,
+            partnerTarget = partnerTarget.text.toString().trim(),
+        ))
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        refresh()
     }
 
     override fun onSharedPreferenceChanged(p: SharedPreferences, changed: String?) = refresh()
@@ -71,6 +135,20 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             p.getString("last_error", null)?.let { "Last sync error: $it" },
             p.getString("gemini_error", null)?.let { "Last Gemini error (that capture was saved unsplit): $it" },
         ).joinToString("\n\n")
+
+        val cfg = guardConfig()
+        val stats = guardStats()
+        val serviceActive = isGuardServiceEnabled()
+        val calendarGranted = checkSelfPermission(android.Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+
+        val serviceText = if (serviceActive) "Guard accessibility service active." else "Guard accessibility service disabled."
+        val calText = if (calendarGranted) "Calendar access granted." else "Calendar access not granted."
+        guardStatus.text = "$serviceText $calText\n\n${stats.summaryText(cfg)}"
+
+        guardEnable.text = if (serviceActive) "Accessibility settings (active)" else "Enable Guard in Accessibility"
+        guardCalendar.visibility = if (calendarGranted) View.GONE else View.VISIBLE
+        guardStage.text = "Stage: ${cfg.stage.label}"
+        guardAccountability.text = "Accountability: ${cfg.accountabilityMode.label}"
     }
 
     /** Device code sign-in, same flow as canvas-todo-sync --login, so no redirect URI or signing hash is needed. */

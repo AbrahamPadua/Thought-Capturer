@@ -125,5 +125,94 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="In the strip, yellow blocks are to-dos, blue is a note, gray is waiting to sync, and red is a problem." />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="32dp"
+            android:background="@color/ink_faint" />
+
+        <TextView
+            style="@style/Capture.Label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Guard" />
+
+        <TextView
+            android:id="@+id/guardStatus"
+            style="@style/Capture.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
+
+        <Button
+            android:id="@+id/guardEnable"
+            style="@style/Capture.HairlineButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Enable Guard in Accessibility" />
+
+        <Button
+            android:id="@+id/guardCalendar"
+            style="@style/Capture.HairlineButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Allow calendar focus blocks" />
+
+        <Button
+            android:id="@+id/guardStage"
+            style="@style/Capture.HairlineButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" />
+
+        <Button
+            android:id="@+id/guardAccountability"
+            style="@style/Capture.HairlineButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" />
+
+        <EditText
+            android:id="@+id/focusTask"
+            style="@style/Capture.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/field_underline"
+            android:hint="Current focus task (or auto-read from Calendar)"
+            android:importantForAutofill="no"
+            android:inputType="textCapSentences"
+            android:paddingVertical="12dp"
+            android:singleLine="true" />
+
+        <EditText
+            android:id="@+id/leisureBudget"
+            style="@style/Capture.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/field_underline"
+            android:hint="Daily short-form budget in minutes (15)"
+            android:importantForAutofill="no"
+            android:inputType="number"
+            android:paddingVertical="12dp"
+            android:singleLine="true" />
+
+        <EditText
+            android:id="@+id/partnerTarget"
+            style="@style/Capture.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/field_underline"
+            android:hint="Accountability webhook URL or SMS number (optional)"
+            android:importantForAutofill="no"
+            android:inputType="textUri"
+            android:paddingVertical="12dp"
+            android:singleLine="true" />
     </LinearLayout>
 </ScrollView>
