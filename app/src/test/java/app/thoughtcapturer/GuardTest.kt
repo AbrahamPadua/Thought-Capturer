@@ -263,7 +263,6 @@ class GuardTest {
             stage = EvalStage.GUARD_ACCOUNTABILITY,
             accountabilityMode = AccountabilityMode.CONSEQUENCE,
             leisureBudgetMin = 20,
-            openingDelaySec = 15,
             videoLimit = 8,
             violationThreshold = 3,
             focusTask = "Write thesis",

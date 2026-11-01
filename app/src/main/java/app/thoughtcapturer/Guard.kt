@@ -50,7 +50,6 @@ data class GuardConfig(
     val stage: EvalStage = EvalStage.GUARD_RETURN,
     val accountabilityMode: AccountabilityMode = AccountabilityMode.OFF,
     val leisureBudgetMin: Int = 15,
-    val openingDelaySec: Int = 10,
     val videoLimit: Int = 5,
     val violationThreshold: Int = 2,
     val focusTask: String = "",
@@ -454,7 +453,6 @@ fun Context.guardConfig(): GuardConfig {
         stage = stage,
         accountabilityMode = mode,
         leisureBudgetMin = p.getInt("guard_leisure_budget_min", 15),
-        openingDelaySec = p.getInt("guard_opening_delay_sec", 10),
         videoLimit = p.getInt("guard_video_limit", 5),
         violationThreshold = p.getInt("guard_violation_threshold", 2),
         focusTask = p.getString("guard_focus_task", "") ?: "",
@@ -468,7 +466,6 @@ fun Context.saveGuardConfig(cfg: GuardConfig) {
         .putString("guard_stage", cfg.stage.name)
         .putString("guard_accountability_mode", cfg.accountabilityMode.name)
         .putInt("guard_leisure_budget_min", cfg.leisureBudgetMin)
-        .putInt("guard_opening_delay_sec", cfg.openingDelaySec)
         .putInt("guard_video_limit", cfg.videoLimit)
         .putInt("guard_violation_threshold", cfg.violationThreshold)
         .putString("guard_focus_task", cfg.focusTask)
