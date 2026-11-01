@@ -36,11 +36,12 @@ private const val LISTENING = "Listening. Tap Done when you're finished."
 private const val LISTENING_NO_KEY = "Listening. Add a Gemini key in Settings for accurate words."
 private const val TYPING = "Typing. It's still listening."
 
-/** The last [max] characters, cut at a word and marked, so the newest words always show. */
-internal fun tail(text: String, max: Int): String {
-    if (text.length <= max) return text
-    val cut = text.indexOf(' ', text.length - max).takeIf { it >= 0 } ?: (text.length - max)
-    return "…" + text.substring(cut).trimStart()
+/** Where the shown end of [text] starts: about its last [max] characters, from a word start, so the newest words always show. */
+internal fun tailFrom(text: CharSequence, max: Int): Int {
+    if (text.length <= max) return 0
+    var cut = text.indexOf(' ', text.length - max).takeIf { it >= 0 } ?: (text.length - max)
+    while (cut < text.length && text[cut] == ' ') cut++
+    return cut
 }
 
 private class Sentence(val rough: String, var exact: String? = null)
@@ -244,7 +245,8 @@ class CaptureActivity : Activity(), RecognitionListener {
             if (s.exact == null) text.setSpan(StyleSpan(Typeface.ITALIC), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
         val max = if (said.maxLines <= 2) 90 else 260
-        said.text = if (text.length > max) tail(text.toString(), max) else text
+        // cut the styled text itself, so sentences still waiting for Gemini stay italic in a long capture
+        said.text = if (text.length > max) SpannableStringBuilder("…").append(text.subSequence(tailFrom(text, max), text.length)) else text
         said.visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
         // the prompt is gray text, not a hint: auto-sizing (cover screen) lays a hint out one letter per line, "S" / "t".
         // Saving reads roughWords, never this view, so the prompt can't end up in a capture.

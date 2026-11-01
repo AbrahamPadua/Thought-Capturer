@@ -64,9 +64,10 @@ class RecorderTest {
 
     @Test
     fun longTranscriptsKeepTheNewestWords() {
-        assertEquals("short", tail("short", 90))
-        val t = tail("one two three four five six seven", 15)
-        assertTrue(t, t.startsWith("…") && t.endsWith("six seven"))
+        assertEquals(0, tailFrom("short", 90))
+        val text = "one two three four five six seven"
+        val t = text.substring(tailFrom(text, 15))
+        assertTrue(t, t.endsWith("six seven") && t.length <= 15 && !t.startsWith(" "))
         assertFalse(t.contains("thre")) // cut at a word, never mid-word
     }
 
