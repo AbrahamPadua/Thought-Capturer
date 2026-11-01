@@ -3,7 +3,6 @@ package app.thoughtcapturer
 import android.Manifest.permission.RECORD_AUDIO
 import android.animation.ValueAnimator
 import android.app.Activity
-import android.app.job.JobScheduler
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -77,11 +76,10 @@ class CaptureActivity : Activity(), RecognitionListener {
 
     private val notice by lazy {
         val p = prefs()
-        val pending = getSystemService(JobScheduler::class.java).allPendingJobs.size
-        val error = p.getString("last_error", null)
+        val s = status() // the same count and error the code strip shows
         when {
             p.getString("refresh_token", null) == null -> "Not signed in to Microsoft yet. Open settings."
-            pending > 0 && error != null -> "$pending waiting to sync: $error"
+            s.syncError -> "${s.waiting} waiting to sync: ${p.getString("last_error", null)}"
             else -> null
         }
     }
