@@ -66,10 +66,10 @@ fun noteHtml(note: Note, raw: String, at: Long): String {
 
 class HttpError(val code: Int, val body: String) : IOException("HTTP $code ${body.take(300)}")
 
-fun http(url: String, body: String? = null, type: String = "application/json", headers: Map<String, String> = emptyMap()): JSONObject {
+fun http(url: String, body: String? = null, type: String = "application/json", headers: Map<String, String> = emptyMap(), readTimeout: Int = 60_000): JSONObject {
     val c = URL(url).openConnection() as HttpURLConnection
     c.connectTimeout = 15_000
-    c.readTimeout = 60_000
+    c.readTimeout = readTimeout
     headers.forEach { (k, v) -> c.setRequestProperty(k, v) }
     try {
         if (body != null) {
@@ -142,7 +142,8 @@ private fun gemini(key: String, parts: JSONArray, config: JSONObject): String {
     val req = JSONObject().put("contents", JSONArray().put(JSONObject().put("parts", parts))).put("generationConfig", config)
     val r = http(
         "https://generativelanguage.googleapis.com/v1beta/models/$GEMINI_MODEL:generateContent",
-        req.toString(), headers = mapOf("x-goog-api-key" to key)
+        req.toString(), headers = mapOf("x-goog-api-key" to key),
+        readTimeout = 180_000, // transcribing minutes of audio can outlast the usual minute
     )
     val out = r.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts")
     return (0 until out.length()).map { out.getJSONObject(it) }
@@ -185,6 +186,30 @@ fun geminiSplit(text: String, at: Long, key: String, pcm: ByteArray? = null): St
     return gemini(key, parts, JSONObject().put("responseMimeType", "application/json").put("responseSchema", schema))
 }
 
+sealed interface Outcome {
+    /** Keep the recording and ask Gemini again on the job's next try. */
+    data object Retry : Outcome
+    /** Only noise was recorded and nothing was typed: nothing to file. */
+    data object Drop : Outcome
+    /** File it, with [raw] as "what you said" in task notes and the OneNote page. */
+    data class Save(val raw: String) : Outcome
+}
+
+const val MAX_TRIES = 5
+
+/**
+ * What the job does once Gemini has answered. [split] is Gemini's JSON, or "" when the call failed or there's no key.
+ * A recording's own transcript is the accurate copy, so a failed call is retried, a few times when the screen showed
+ * words to fall back on and indefinitely when it showed none (nothing else holds them). Gemini's transcript is used
+ * only when audio was sent: for typed text it would be a rewrite of the user's exact words.
+ */
+fun outcome(hasAudio: Boolean, split: String, shown: String, typed: String, tries: Int, hasKey: Boolean): Outcome {
+    if (hasAudio && split.isBlank() && (shown.isBlank() || hasKey && tries < MAX_TRIES)) return Outcome.Retry
+    val transcript = if (hasAudio) transcriptOf(split) else null
+    val raw = transcript?.let { listOf(it, typed).filter(String::isNotBlank).joinToString("\n\n") } ?: shown
+    return if (raw.isBlank()) Outcome.Drop else Outcome.Save(raw)
+}
+
 /** Uploads one capture. JobScheduler gives us the offline queue, retries with backoff, and reboot survival. */
 class SaveJob : JobService() {
     override fun onStartJob(params: JobParameters): Boolean {
@@ -210,20 +235,24 @@ class SaveJob : JobService() {
         val at = params.extras.getLong("at")
         val p = prefs()
         val k = "job${params.jobId}"
-        // cache the split so a retry after a partial upload doesn't ask Gemini again and get a different split
-        val split = p.getString("${k}_split", null) ?: split(if (audio == null) shown else typed, at, audio).also {
-            // Gemini failed on a recording with no live words: nothing else holds what was said, so keep it and retry
-            if (audio != null && it.isBlank() && shown.isBlank() && typed.isBlank())
+        val cached = p.getString("${k}_split", null)
+        val split = cached ?: split(if (audio == null) shown else typed, at, audio)
+        val tries = p.getInt("${k}_tries", 0)
+        val hasKey = !p.getString("gemini_key", null).isNullOrBlank()
+        val raw = when (val o = outcome(audio != null, split, shown, typed, tries, hasKey)) {
+            Outcome.Retry -> {
+                p.edit().putInt("${k}_tries", tries + 1).apply()
                 throw IOException("Couldn't transcribe a recording yet: ${p.getString("gemini_error", null) ?: "no Gemini key"}")
-            p.edit().putString("${k}_split", it).commit()
+            }
+            Outcome.Drop -> {
+                p.edit().remove("${k}_split").remove("${k}_done").remove("${k}_tries").apply()
+                params.extras.getString("audio")?.let { File(it).delete() }
+                return
+            }
+            is Outcome.Save -> o.raw
         }
-        // the recording's own transcript beats the live captions it replaces
-        val raw = transcriptOf(split)?.let { listOf(it, typed).filter(String::isNotBlank).joinToString("\n\n") } ?: shown
-        if (raw.isBlank()) { // Gemini heard only noise and nothing was typed: there is nothing to file
-            p.edit().remove("${k}_split").remove("${k}_done").apply()
-            audio?.delete()
-            return
-        }
+        // cache the split so a retry after a partial upload doesn't ask Gemini again and get a different split
+        if (cached == null) p.edit().putString("${k}_split", split).commit()
         val (tasks, note) = parseSplit(split, raw)
         val token = accessToken(this)
         val auth = mapOf("Authorization" to "Bearer $token")
@@ -244,7 +273,7 @@ class SaveJob : JobService() {
             // shortcut: a POST that lands but whose reply is lost gets sent again on retry (rare duplicate, never a lost capture)
             p.edit().putInt("${k}_done", i + 1).commit()
         }
-        p.edit().remove("${k}_split").remove("${k}_done").remove("last_error")
+        p.edit().remove("${k}_split").remove("${k}_done").remove("${k}_tries").remove("last_error")
             .putString("last_filed", "${tasks.size} ${if (note == null) 0 else 1}") // read by the code strip (Codes.kt)
             .apply()
         params.extras.getString("audio")?.let { File(it).delete() } // filed: the recording has done its job
