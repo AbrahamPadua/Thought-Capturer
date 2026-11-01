@@ -186,7 +186,6 @@ private val STOPWORDS = setOf(
     "the", "and", "for", "with", "watching", "need",
     "check", "open", "about", "from", "into", "that", "this"
 )
-private val MSG_KEYWORDS = setOf("dm", "dms", "message", "messages", "reply", "replying", "text", "chat")
 
 /** Stage 2 local semantic check verifying if screen titles match stated purpose. */
 fun verifyPurposeLocal(
@@ -195,15 +194,15 @@ fun verifyPurposeLocal(
     kind: ScreenKind,
     nodes: List<ScreenNode>,
 ): PurposeMatch {
-    if (kind is ScreenKind.ShortForm) {
+    val headers = extractRedactedHeaders(nodes, maxLines = 5)
+    if (kind is ScreenKind.ShortForm && headers.isEmpty()) {
         return PurposeMatch.Mismatch("${kind.feedName} is blocked during an important-use pass.")
     }
-    val headers = extractRedactedHeaders(nodes)
     val tokens = Regex("[a-zA-Z0-9]+").findAll(intent.lowercase()).map { it.value }.toList()
     val keywords = tokens.filter { it.length >= 3 && it !in STOPWORDS }
 
-    if (kind == ScreenKind.SafeSection("Instagram DMs")) {
-        if (tokens.any { it in MSG_KEYWORDS }) return PurposeMatch.Match
+    if (kind == ScreenKind.SafeSection("Instagram DMs") || kind is ScreenKind.GuardedApp) {
+        return PurposeMatch.Match
     }
 
     if (headers.isEmpty()) return PurposeMatch.Match

@@ -114,6 +114,10 @@ class GuardTest {
         val matchResult = verifyPurposeLocal("watch cse 100 lecture", "com.google.android.youtube", ScreenKind.SafeSection("YouTube Video"), matchNodes)
         assertEquals(PurposeMatch.Match, matchResult)
 
+        // A short-form screen whose visible header matches the stated purpose is allowed during a pass
+        val reelMatch = verifyPurposeLocal("watch cse 100 demo", "com.instagram.android", reelsKind, matchNodes)
+        assertEquals(PurposeMatch.Match, reelMatch)
+
         val unrelatedNodes = listOf(ScreenNode(text = "Top 10 Hilarious Cat Compilation 2026"))
         val uncertainResult = verifyPurposeLocal("study cse 100", "com.google.android.youtube", ScreenKind.SafeSection("YouTube Video"), unrelatedNodes)
         assertTrue(uncertainResult is PurposeMatch.Uncertain)

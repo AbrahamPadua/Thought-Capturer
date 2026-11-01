@@ -207,17 +207,30 @@ class GuardActivity : Activity() {
             finish()
         }
 
-        findViewById<Button>(R.id.btnCountdownCancel).setOnClickListener {
+        val btnCancel = findViewById<Button>(R.id.btnCountdownCancel)
+        val lastFp = prefs().getLong("guard_fp_last_ms", 0L)
+        btnCancel.visibility = if (lastFp == 0L || System.currentTimeMillis() - lastFp >= 3600_000L) View.VISIBLE else View.GONE
+        btnCancel.setOnClickListener {
             cancelCountdown()
             container.visibility = View.GONE
+            val now = System.currentTimeMillis()
             prefs().edit()
-                .putLong("guard_pass_until", System.currentTimeMillis() + 5 * 60_000L)
+                .putLong("guard_fp_last_ms", now)
+                .putLong("guard_pass_until", now + 5 * 60_000L)
                 .putString("guard_pass_intent", "false positive")
                 .apply()
             finish()
         }
 
         handler.postDelayed(countdownRunnable, 1000L)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        cancelCountdown()
+        updateGuardStats { it.copy(returnedToTask = it.returnedToTask + 1) }
+        startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        finish()
     }
 
     private fun sendNotice() {
