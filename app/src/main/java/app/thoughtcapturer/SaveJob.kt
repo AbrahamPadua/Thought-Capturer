@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.PersistableBundle
 import android.util.Log
+import java.io.DataInputStream
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -182,7 +183,10 @@ internal fun selectAudio(file: File?, shown: String, maxBytes: Long = MAX_AUDIO)
     file?.takeIf { it.isFile && it.length() > 0 && (it.length() <= maxBytes || shown.isBlank()) }
 
 internal fun readAudioCap(file: File?, cap: Int = MAX_AUDIO.toInt()): ByteArray? =
-    file?.takeIf { it.isFile && it.length() > 0 }?.inputStream()?.use { it.readNBytes(cap) }
+    file?.takeIf { it.isFile && it.length() > 0 }?.let { f ->
+        // readFully, not readNBytes: that needs Android 13 and the app supports 12
+        ByteArray(minOf(f.length(), cap.toLong()).toInt()).also { b -> DataInputStream(f.inputStream()).use { it.readFully(b) } }
+    }
 
 /** The transcript Gemini returned with an audio split, or null when the split had none (typed only, or a failed call). */
 fun transcriptOf(json: String?): String? =
