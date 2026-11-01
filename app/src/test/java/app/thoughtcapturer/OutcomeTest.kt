@@ -1,6 +1,10 @@
 package app.thoughtcapturer
 
+import java.io.IOException
+import java.net.SocketTimeoutException
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OutcomeTest {
@@ -46,5 +50,14 @@ class OutcomeTest {
     @Test
     fun failedSplitOfTypedTextIsStillFiledUnsplit() {
         assertEquals(Outcome.Save("buy rice"), outcome(false, "", "buy rice", "buy rice", 0, true))
+    }
+
+    @Test
+    fun throttlingAndServerErrorsAreRetriedInPlaceButRejectionsAreNot() {
+        assertTrue(passing(HttpError(429, "")))
+        assertTrue(passing(HttpError(503, "")))
+        assertTrue(passing(SocketTimeoutException()))
+        assertFalse(passing(HttpError(400, ""))) // a bad request fails the same way 30 s later
+        assertFalse(passing(IOException("Not signed in to Microsoft. Open Settings to sign in.")))
     }
 }

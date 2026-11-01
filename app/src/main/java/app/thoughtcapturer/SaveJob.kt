@@ -12,6 +12,7 @@ import android.util.Log
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URL
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
@@ -20,6 +21,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 import org.json.JSONArray
 import org.json.JSONObject
@@ -260,23 +262,42 @@ fun outcome(hasAudio: Boolean, split: String, shown: String, typed: String, trie
     return if (raw.isBlank()) Outcome.Drop else Outcome.Save(raw)
 }
 
+/** Errors that usually clear within a minute: Microsoft throttling (429), a server hiccup (5xx), a stalled connection. */
+internal fun passing(e: Exception) = e is SocketTimeoutException || e is HttpError && (e.code == 429 || e.code >= 500)
+
 /** Uploads one capture. JobScheduler gives us the offline queue, retries with backoff, and reboot survival. */
 class SaveJob : JobService() {
     override fun onStartJob(params: JobParameters): Boolean {
         thread {
-            val ok = try {
-                save(params)
-                true
-            } catch (e: Exception) {
-                prefs().edit().putString("last_error", e.message ?: e.toString()).apply()
-                false
-            }
-            jobFinished(params, !ok)
+            jobFinished(params, !upload(params))
+            stopped -= params
         }
         return true
     }
 
-    override fun onStopJob(params: JobParameters) = true
+    override fun onStopJob(params: JobParameters): Boolean {
+        stopped += params
+        return true
+    }
+
+    /**
+     * Tries the upload, and again after 30 s and 60 s when the error is [passing]. JobScheduler's own retries wait
+     * while the phone is warm (often while charging), which can make a reminder land after its time.
+     */
+    private fun upload(params: JobParameters): Boolean {
+        for (wait in longArrayOf(0, 30_000, 60_000)) {
+            Thread.sleep(wait)
+            if (params in stopped) return false // the system will start this job again; two runs would file it twice
+            try {
+                save(params)
+                return true
+            } catch (e: Exception) {
+                prefs().edit().putString("last_error", e.message ?: e.toString()).apply()
+                if (!passing(e)) return false
+            }
+        }
+        return false
+    }
 
     private fun save(params: JobParameters) {
         val shown = params.extras.getString("text")!! // what the screen showed: the fallback if Gemini can't help
@@ -347,6 +368,9 @@ class SaveJob : JobService() {
     }
 
     companion object {
+        // runs the system stopped (and will start again), so their threads don't retry alongside the new run
+        private val stopped: MutableSet<JobParameters> = ConcurrentHashMap.newKeySet()
+
         /** [text] is everything the screen showed; [audio] the recording, if any; [typed] the words typed beside it. */
         fun enqueue(ctx: Context, text: String, audio: File? = null, typed: String = ""): Boolean {
             val p = ctx.prefs()
