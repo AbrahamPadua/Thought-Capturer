@@ -216,6 +216,11 @@ class GuardActivity : Activity() {
 
         findViewById<Button>(R.id.btnCountdownCancel).setOnClickListener {
             cancelCountdown()
+            container.visibility = View.GONE
+            prefs().edit()
+                .putLong("guard_pass_until", System.currentTimeMillis() + 5 * 60_000L)
+                .putString("guard_pass_intent", "false positive")
+                .apply()
             finish()
         }
 

@@ -281,4 +281,55 @@ class GuardTest {
         assertFalse(sendAccountabilityNotice(ctx, "", "test"))
         assertFalse(sendAccountabilityNotice(ctx, "   ", "test"))
     }
+
+    @Test
+    fun guardActivityRendersAndHandlesPurposePassAndCountdownCancel() {
+        val intent = android.content.Intent(ctx, GuardActivity::class.java).apply {
+            putExtra("feed", "Instagram Reels")
+            putExtra("reason", "Blocked during COGS 108.")
+            putExtra("focusTitle", "COGS 108")
+            putExtra("nextAction", "Finish section 2")
+            putExtra("allowPurposePass", true)
+            putExtra("allowLeisureBreak", false)
+            putExtra("triggerCountdown", true)
+            putExtra("sendSupportiveNotice", false)
+        }
+        val controller = org.robolectric.Robolectric.buildActivity(GuardActivity::class.java, intent).setup()
+        val activity = controller.get()
+
+        assertEquals("Instagram Reels paused", activity.findViewById<android.widget.TextView>(R.id.headline).text.toString())
+        assertEquals("Commitment: COGS 108", activity.findViewById<android.widget.TextView>(R.id.focusCommitment).text.toString())
+        assertEquals("Next: Finish section 2", activity.findViewById<android.widget.TextView>(R.id.nextAction).text.toString())
+        assertEquals(android.view.View.VISIBLE, activity.findViewById<android.view.View>(R.id.countdownContainer).visibility)
+
+        // Reveal purpose input and grant 5m pass (which also cancels countdown)
+        activity.findViewById<android.widget.Button>(R.id.btnImportant).performClick()
+        assertEquals(android.view.View.VISIBLE, activity.findViewById<android.view.View>(R.id.purposeInputGroup).visibility)
+        activity.findViewById<android.widget.EditText>(R.id.purposeInput).setText("message lab partner")
+        activity.findViewById<android.widget.Button>(R.id.btnGrantPass).performClick()
+        assertEquals("message lab partner", ctx.prefs().getString("guard_pass_intent", ""))
+        assertTrue(activity.isFinishing)
+        controller.destroy()
+    }
+
+    @Test
+    fun settingsActivityCyclesGuardStageAndMode() {
+        ctx.saveGuardConfig(GuardConfig(stage = EvalStage.GUARD_RETURN, accountabilityMode = AccountabilityMode.SUPPORTIVE))
+        val controller = org.robolectric.Robolectric.buildActivity(SettingsActivity::class.java).setup()
+        val activity = controller.get()
+
+        val stageBtn = activity.findViewById<android.widget.Button>(R.id.guardStage)
+        val acctBtn = activity.findViewById<android.widget.Button>(R.id.guardAccountability)
+        assertEquals("Stage: 3 · Guard + Return to task", stageBtn.text.toString())
+        assertEquals("Accountability: Supportive check-in", acctBtn.text.toString())
+
+        stageBtn.performClick()
+        assertEquals(EvalStage.GUARD_ACCOUNTABILITY, ctx.guardConfig().stage)
+        assertEquals("Stage: 4 · Guard + Return + Accountability", stageBtn.text.toString())
+
+        acctBtn.performClick()
+        assertEquals(AccountabilityMode.CONSEQUENCE, ctx.guardConfig().accountabilityMode)
+        assertEquals("Accountability: 30s countdown + notice", acctBtn.text.toString())
+        controller.destroy()
+    }
 }
