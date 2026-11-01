@@ -121,8 +121,15 @@ class Recorder(
     fun start() {
         val size = maxOf(AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT), RATE)
         val rec = AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, size)
+        try {
+            rec.startRecording()
+        } catch (e: Exception) {
+            // the capture screen shows the mic error and a retry builds a new Recorder, so free this one's now
+            rec.release()
+            pipe.forEach { it.close() }
+            throw e
+        }
         running = true
-        rec.startRecording()
         file.parentFile?.mkdirs()
         worker = thread(name = "recorder") {
             val samples = ShortArray(CHUNK)
