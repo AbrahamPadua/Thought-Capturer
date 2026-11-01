@@ -101,8 +101,11 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         prefs().edit().putString("gemini_key", key.text.toString().trim()).apply()
         val cfg = guardConfig()
         val budget = leisureBudget.text.toString().toIntOrNull() ?: cfg.leisureBudgetMin
+        val task = focusTask.text.toString().trim()
         saveGuardConfig(cfg.copy(
-            focusTask = focusTask.text.toString().trim(),
+            focusTask = task,
+            // the clock starts when the task is typed or changed, not each time Settings closes
+            focusUntilMs = if (task != cfg.focusTask) System.currentTimeMillis() + FOCUS_TASK_MS else cfg.focusUntilMs,
             leisureBudgetMin = budget,
             partnerTarget = partnerTarget.text.toString().trim(),
         ))
@@ -144,7 +147,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
         val serviceText = if (serviceActive) "Guard accessibility service active." else "Guard accessibility service disabled."
         val calText = if (calendarGranted) "Calendar access granted." else "Calendar access not granted."
-        guardStatus.text = "$serviceText $calText\n\n${stats.summaryText(cfg)}"
+        val focusText = if (cfg.focusTask.isBlank()) "" else
+            " Focus task until ${android.text.format.DateFormat.getTimeFormat(this).format(java.util.Date(cfg.focusUntilMs))}."
+        guardStatus.text = "$serviceText $calText$focusText\n\n${stats.summaryText(cfg)}"
 
         guardEnable.text = if (serviceActive) "Accessibility settings (active)" else "Enable Guard in Accessibility"
         guardCalendar.visibility = if (calendarGranted) View.GONE else View.VISIBLE

@@ -278,9 +278,14 @@ class GuardTest {
             focusTask = "Write thesis",
             partnerTarget = "partner@example.com",
             useGeminiVerify = false,
+            focusUntilMs = System.currentTimeMillis() + 3600_000L,
         )
         ctx.saveGuardConfig(cfg)
         assertEquals(cfg, ctx.guardConfig())
+        // once its hours are up, a typed focus task stops counting as focus time
+        ctx.saveGuardConfig(cfg.copy(focusUntilMs = System.currentTimeMillis() - 1))
+        assertEquals("", ctx.guardConfig().focusTask)
+        ctx.saveGuardConfig(cfg)
 
         val day = "2026-11-01"
         assertEquals(0, ctx.guardStats(day).shortFormSec)
@@ -362,6 +367,12 @@ class GuardTest {
         acctBtn.performClick()
         assertEquals(AccountabilityMode.CONSEQUENCE, ctx.guardConfig().accountabilityMode)
         assertEquals("Accountability: 30s countdown + notice", acctBtn.text.toString())
+
+        // typing a focus task starts its 3 hours
+        activity.findViewById<android.widget.EditText>(R.id.focusTask).setText("Finish lab report")
+        controller.pause()
+        assertEquals("Finish lab report", ctx.guardConfig().focusTask)
+        assertTrue(ctx.guardConfig().focusUntilMs - System.currentTimeMillis() in (FOCUS_TASK_MS - 60_000L)..FOCUS_TASK_MS)
         controller.destroy()
     }
 

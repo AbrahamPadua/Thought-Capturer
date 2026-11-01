@@ -55,7 +55,11 @@ data class GuardConfig(
     val focusTask: String = "",
     val partnerTarget: String = "",
     val useGeminiVerify: Boolean = true,
+    val focusUntilMs: Long = 0L,
 )
+
+/** A focus task typed in Settings counts as focus time this long, so it can't keep Reels blocked all night. */
+const val FOCUS_TASK_MS = 3 * 3600_000L
 
 data class GuardStats(
     val day: String,
@@ -436,15 +440,17 @@ fun Context.guardConfig(): GuardConfig {
     val stage = runCatching { EvalStage.valueOf(stageStr!!) }.getOrDefault(EvalStage.GUARD_RETURN)
     val modeStr = p.getString("guard_accountability_mode", null)
     val mode = runCatching { AccountabilityMode.valueOf(modeStr!!) }.getOrDefault(AccountabilityMode.OFF)
+    val focusUntil = p.getLong("guard_focus_until", 0L)
     return GuardConfig(
         stage = stage,
         accountabilityMode = mode,
         leisureBudgetMin = p.getInt("guard_leisure_budget_min", 15),
         videoLimit = p.getInt("guard_video_limit", 5),
         violationThreshold = p.getInt("guard_violation_threshold", 2),
-        focusTask = p.getString("guard_focus_task", "") ?: "",
+        focusTask = (p.getString("guard_focus_task", "") ?: "").takeIf { System.currentTimeMillis() < focusUntil }.orEmpty(),
         partnerTarget = p.getString("guard_partner_target", "") ?: "",
         useGeminiVerify = p.getBoolean("guard_gemini_verify", true),
+        focusUntilMs = focusUntil,
     )
 }
 
@@ -458,6 +464,7 @@ fun Context.saveGuardConfig(cfg: GuardConfig) {
         .putString("guard_focus_task", cfg.focusTask)
         .putString("guard_partner_target", cfg.partnerTarget)
         .putBoolean("guard_gemini_verify", cfg.useGeminiVerify)
+        .putLong("guard_focus_until", cfg.focusUntilMs)
         .apply()
 }
 
