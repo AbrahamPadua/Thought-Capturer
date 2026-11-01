@@ -16,6 +16,8 @@ import java.net.URL
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import kotlin.concurrent.thread
@@ -34,9 +36,12 @@ const val GEMINI_MODEL = "gemini-flash-latest"
 
 fun Context.prefs(): SharedPreferences = getSharedPreferences("capture", Context.MODE_PRIVATE)
 
-data class Task(val title: String, val due: String?)
+/** [remind] is a local time, yyyy-MM-ddTHH:mm:ss, when To Do should alert; [important] stars the task. */
+data class Task(val title: String, val due: String?, val remind: String? = null, val important: Boolean = false)
 data class Note(val title: String, val points: List<String>)
 data class Split(val tasks: List<Task>, val note: Note?)
+
+private val REMINDER_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
 
 /** Gemini's JSON to tasks and an optional note. Anything unusable falls back to the raw capture as one task. */
 fun parseSplit(json: String?, raw: String): Split {
@@ -44,8 +49,15 @@ fun parseSplit(json: String?, raw: String): Split {
         val o = JSONObject(json ?: "")
         val a = o.optJSONArray("tasks") ?: JSONArray()
         val tasks = (0 until a.length()).map { a.getJSONObject(it) }
-            // a real date only: To Do rejects "2027-02-29", and that would fail the upload forever
-            .map { Task(it.optString("title").trim(), it.optString("due").takeIf { d -> runCatching { LocalDate.parse(d) }.isSuccess }) }
+            // a real date and time only: To Do rejects "2027-02-29", and that would fail the upload forever
+            .map {
+                Task(
+                    it.optString("title").trim(),
+                    it.optString("due").takeIf { d -> runCatching { LocalDate.parse(d) }.isSuccess },
+                    runCatching { LocalDateTime.parse(it.optString("remind")).format(REMINDER_TIME) }.getOrNull(),
+                    it.optBoolean("important"),
+                )
+            }
             .filter { it.title.isNotEmpty() }
         val n = o.optJSONObject("note")
         val points = n?.optJSONArray("points")?.let { p -> (0 until p.length()).map { p.optString(it).trim() } }.orEmpty().filter { it.isNotEmpty() }
@@ -62,6 +74,16 @@ fun noteHtml(note: Note, raw: String, at: Long): String {
     val created = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(Date(at)) // the time you said it, not the upload time
     return "<!DOCTYPE html><html><head><title>${esc(note.title)}</title><meta name=\"created\" content=\"$created\" /></head><body>" +
         "<ul>${note.points.joinToString("") { "<li>${esc(it)}</li>" }}</ul><p><i>What you said:</i> ${esc(raw)}</p></body></html>"
+}
+
+/** The To Do task to create. [tz] is a Windows zone name; [raw] goes in the body unless it's the title already. */
+fun taskJson(t: Task, raw: String, tz: String): JSONObject {
+    val task = JSONObject().put("title", t.title)
+    if (t.title != raw) task.put("body", JSONObject().put("content", raw).put("contentType", "text"))
+    if (t.due != null) task.put("dueDateTime", JSONObject().put("dateTime", "${t.due}T00:00:00").put("timeZone", tz))
+    if (t.remind != null) task.put("isReminderOn", true).put("reminderDateTime", JSONObject().put("dateTime", t.remind).put("timeZone", tz))
+    if (t.important) task.put("importance", "high")
+    return task
 }
 
 class HttpError(val code: Int, val body: String) : IOException("HTTP $code ${body.take(300)}")
@@ -170,6 +192,7 @@ fun geminiSplit(text: String, at: Long, key: String, pcm: ByteArray? = null): St
     val prompt = """
         It is $now. Sort this voice note into to-do tasks and a note.
         - tasks: things the speaker needs to do, one per separate action. title: short, starts with a verb, keeps their own words and names. due: YYYY-MM-DD, only when they gave or implied a date ("by Friday", "tomorrow"); otherwise leave it out.
+          remind: YYYY-MM-DDTHH:MM, only when they asked to be reminded or named a time of day ("at 4", "tonight at 7", "in two hours"): the next such time after now. important: true only when they called it urgent or important.
         - note: everything else worth keeping, like details, ideas, explanations and thinking out loud. title: a few words naming the topic. points: that content as short, clear bullet points in a sensible order, keeping every detail and the speaker's wording. Add no facts they didn't say.
         - If it is all to-dos, leave out the note. If it is all rambling, return an empty tasks list.
         - Keep every word in the language it was said.
@@ -178,7 +201,7 @@ fun geminiSplit(text: String, at: Long, key: String, pcm: ByteArray? = null): St
     val schema = JSONObject(
         """{"type":"OBJECT","properties":{""" +
             """"transcript":{"type":"STRING"},""" +
-            """"tasks":{"type":"ARRAY","items":{"type":"OBJECT","properties":{"title":{"type":"STRING"},"due":{"type":"STRING"}},"required":["title"]}},""" +
+            """"tasks":{"type":"ARRAY","items":{"type":"OBJECT","properties":{"title":{"type":"STRING"},"due":{"type":"STRING"},"remind":{"type":"STRING"},"important":{"type":"BOOLEAN"}},"required":["title"]}},""" +
             """"note":{"type":"OBJECT","properties":{"title":{"type":"STRING"},"points":{"type":"ARRAY","items":{"type":"STRING"}}},"required":["title","points"]}""" +
             """},"required":["tasks"]}"""
     )
@@ -262,11 +285,7 @@ class SaveJob : JobService() {
         // tasks first, then the note; the done counter lets a retry resume after the last upload that landed
         for (i in p.getInt("${k}_done", 0) until tasks.size + (if (note == null) 0 else 1)) {
             if (i < tasks.size) {
-                val t = tasks[i]
-                val task = JSONObject().put("title", t.title)
-                if (t.title != raw) task.put("body", JSONObject().put("content", raw).put("contentType", "text"))
-                if (t.due != null) task.put("dueDateTime", JSONObject().put("dateTime", "${t.due}T00:00:00").put("timeZone", tz))
-                http("$TODO_LISTS/$listId/tasks", task.toString(), headers = auth)
+                http("$TODO_LISTS/$listId/tasks", taskJson(tasks[i], raw, tz).toString(), headers = auth)
             } else {
                 http(ONENOTE_PAGES, noteHtml(note!!, raw, at), "text/html", auth)
             }

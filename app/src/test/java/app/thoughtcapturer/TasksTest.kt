@@ -49,6 +49,28 @@ class TasksTest {
     }
 
     @Test
+    fun keepsAReminderTimeAndImportanceAndDropsBadTimes() {
+        val tasks = parseSplit(
+            """{"tasks":[{"title":"Email prof","remind":"2026-10-31T16:00","important":true},{"title":"Call mom","remind":"4pm"}]}""",
+            "raw",
+        ).tasks
+        assertEquals(Task("Email prof", null, "2026-10-31T16:00:00", true), tasks[0])
+        assertEquals(Task("Call mom", null), tasks[1])
+    }
+
+    @Test
+    fun taskJsonTurnsOnTheReminderAndStars() {
+        val t = taskJson(Task("Email prof", "2026-11-02", "2026-10-31T16:00:00", true), "email prof at 4, urgent", "Pacific Standard Time")
+        assertTrue(t.getBoolean("isReminderOn"))
+        assertEquals("2026-10-31T16:00:00", t.getJSONObject("reminderDateTime").getString("dateTime"))
+        assertEquals("Pacific Standard Time", t.getJSONObject("reminderDateTime").getString("timeZone"))
+        assertEquals("high", t.getString("importance"))
+        assertEquals("2026-11-02T00:00:00", t.getJSONObject("dueDateTime").getString("dateTime"))
+        val plain = taskJson(Task("Buy rice", null), "Buy rice", "UTC")
+        assertEquals("""{"title":"Buy rice"}""", plain.toString()) // nothing To Do would read as a reminder, a star or a duplicate body
+    }
+
+    @Test
     fun noteHtmlEscapesSpeech() {
         val html = noteHtml(Note("a < b", listOf("x & y")), "say \"hi\" <3", 0)
         assertTrue(html, "<title>a &lt; b</title>" in html)
