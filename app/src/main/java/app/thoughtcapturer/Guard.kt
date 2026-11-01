@@ -459,11 +459,13 @@ fun Context.saveGuardConfig(cfg: GuardConfig) {
         .apply()
 }
 
-fun Context.guardStats(day: String = todayDay()): GuardStats {
-    val raw = prefs().getString("guard_stats", null) ?: return GuardStats(day)
-    return runCatching {
+private val statsLock = Any()
+
+fun Context.guardStats(day: String = todayDay()): GuardStats = synchronized(statsLock) {
+    val raw = prefs().getString("guard_stats", null) ?: return@synchronized GuardStats(day)
+    runCatching {
         val o = JSONObject(raw)
-        if (o.optString("day") != day) return GuardStats(day)
+        if (o.optString("day") != day) return@synchronized GuardStats(day)
         GuardStats(
             day = day,
             shortFormSec = o.optInt("shortFormSec", 0),
@@ -475,7 +477,7 @@ fun Context.guardStats(day: String = todayDay()): GuardStats {
     }.getOrDefault(GuardStats(day))
 }
 
-fun Context.updateGuardStats(day: String = todayDay(), transform: (GuardStats) -> GuardStats): GuardStats {
+fun Context.updateGuardStats(day: String = todayDay(), transform: (GuardStats) -> GuardStats): GuardStats = synchronized(statsLock) {
     val updated = transform(guardStats(day))
     val o = JSONObject()
         .put("day", day)
@@ -484,8 +486,8 @@ fun Context.updateGuardStats(day: String = todayDay(), transform: (GuardStats) -
         .put("returnedToTask", updated.returnedToTask)
         .put("overrides", updated.overrides)
         .put("notificationsSent", updated.notificationsSent)
-    prefs().edit().putString("guard_stats", o.toString()).apply()
-    return updated
+    prefs().edit().putString("guard_stats", o.toString()).commit()
+    updated
 }
 
 fun GuardStats.summaryText(cfg: GuardConfig): String {
@@ -494,7 +496,12 @@ fun GuardStats.summaryText(cfg: GuardConfig): String {
     return "$leisureMin / ${cfg.leisureBudgetMin}m leisure · $unplannedOpenings blocked · $returnedToTask returned · $overrides overrides$notifPart"
 }
 
-fun Context.isGuardServiceEnabled(): Boolean {
-    val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
-    return enabled.contains(packageName)
+fun isServiceInEnabledList(enabled: String?, packageName: String): Boolean {
+    if (enabled.isNullOrBlank()) return false
+    val full = "$packageName/$packageName.GuardService"
+    val short = "$packageName/.GuardService"
+    return enabled.split(':').any { it.equals(full, ignoreCase = true) || it.equals(short, ignoreCase = true) }
 }
+
+fun Context.isGuardServiceEnabled(): Boolean =
+    isServiceInEnabledList(Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES), packageName)

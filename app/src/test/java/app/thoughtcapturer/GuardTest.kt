@@ -392,5 +392,17 @@ class GuardTest {
         assertFalse(svc.shouldResetOnNonGuardedEvent("com.samsung.android.honeyboard", winState))
         assertFalse(svc.shouldResetOnNonGuardedEvent("com.android.chrome", content))
         assertTrue(svc.shouldResetOnNonGuardedEvent("com.android.chrome", winState))
+
+        // Gemini check cache deduplicates identical (intent, headers) for 20s, but checks new headers or intents immediately
+        assertTrue(svc.shouldCheckGemini("study", listOf("video 1"), 1_000L))
+        assertFalse(svc.shouldCheckGemini("study", listOf("video 1"), 5_000L))
+        assertTrue(svc.shouldCheckGemini("study", listOf("video 2"), 5_000L))
+        assertTrue(svc.shouldCheckGemini("new purpose", listOf("video 2"), 6_000L))
+        assertTrue(svc.shouldCheckGemini("new purpose", listOf("video 2"), 27_000L))
+
+        // Exact accessibility component matching
+        assertTrue(isServiceInEnabledList("com.other/.Svc:app.thoughtcapturer/app.thoughtcapturer.GuardService", "app.thoughtcapturer"))
+        assertTrue(isServiceInEnabledList("app.thoughtcapturer/.GuardService", "app.thoughtcapturer"))
+        assertFalse(isServiceInEnabledList("app.thoughtcapturer.other/.GuardService", "app.thoughtcapturer"))
     }
 }

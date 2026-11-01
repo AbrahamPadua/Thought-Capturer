@@ -17,6 +17,7 @@ class GuardService : AccessibilityService() {
     private var pendingCheck: Runnable? = null
     private var lastInterruptMs = 0L
     private var lastGeminiCheckMs = 0L
+    private var lastGeminiIntent = ""
     private var lastGeminiHeaders = emptyList<String>()
     internal var consecVideos = 0
     internal var wasInShortForm = false
@@ -93,14 +94,14 @@ class GuardService : AccessibilityService() {
         when (action) {
             is GuardAction.Allow -> { /* allow */ }
             is GuardAction.CheckGemini -> {
-                if (nowMs - lastGeminiCheckMs >= 20_000L && action.headers != lastGeminiHeaders) {
-                    lastGeminiCheckMs = nowMs
-                    lastGeminiHeaders = action.headers
+                if (shouldCheckGemini(action.intent, action.headers, nowMs)) {
                     val key = prefs().getString("gemini_key", "").orEmpty()
+                    val leisureRemainingMin = ((cfg.leisureBudgetMin * 60 - stats.shortFormSec).coerceAtLeast(0)) / 60
                     thread {
                         val matches = verifyPurposeGemini(action.intent, action.headers, key)
                         if (!matches) {
                             prefs().edit().remove("guard_pass_until").apply()
+                            updateGuardStats { it.copy(unplannedOpenings = it.unplannedOpenings + 1) }
                             handler.post {
                                 performGlobalAction(GLOBAL_ACTION_BACK)
                                 val feedName = if (kind is ScreenKind.ShortForm) kind.feedName else pkg
@@ -109,9 +110,9 @@ class GuardService : AccessibilityService() {
                                     reason = "Screen titles did not match your stated purpose (${action.intent}).",
                                     focusTitle = focus?.title,
                                     nextAction = focus?.nextAction,
-                                    allowPurposePass = true,
-                                    allowLeisureBreak = false,
-                                    leisureRemainingMin = 0,
+                                    allowPurposePass = cfg.stage >= EvalStage.GUARD_RETURN,
+                                    allowLeisureBreak = focus == null && leisureRemainingMin > 0,
+                                    leisureRemainingMin = leisureRemainingMin,
                                     triggerCountdown = false,
                                     sendSupportiveNotice = false,
                                 )
@@ -160,6 +161,15 @@ class GuardService : AccessibilityService() {
             }
         }
         return list
+    }
+
+    internal fun shouldCheckGemini(intent: String, headers: List<String>, nowMs: Long): Boolean {
+        val sameQuery = intent == lastGeminiIntent && headers == lastGeminiHeaders
+        if (sameQuery && lastGeminiCheckMs > 0L && nowMs - lastGeminiCheckMs < 20_000L) return false
+        lastGeminiCheckMs = nowMs
+        lastGeminiIntent = intent
+        lastGeminiHeaders = headers
+        return true
     }
 
     internal fun shouldResetOnNonGuardedEvent(pkg: String, eventType: Int): Boolean {
