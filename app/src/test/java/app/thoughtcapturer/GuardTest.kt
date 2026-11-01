@@ -63,6 +63,10 @@ class GuardTest {
 
     @Test
     fun classifiesTikTokAndOtherApps() {
+        assertTrue(isGuardedPackage("com.instagram.android"))
+        assertTrue(isGuardedPackage("com.google.android.youtube"))
+        assertTrue(isGuardedPackage("com.zhiliaoapp.musically"))
+        assertFalse(isGuardedPackage("com.android.chrome"))
         assertEquals(ScreenKind.ShortForm("TikTok"), classifyScreen("com.zhiliaoapp.musically", emptyList()))
         assertEquals(ScreenKind.ShortForm("TikTok"), classifyScreen("com.ss.android.ugc.trill", emptyList()))
         assertEquals(ScreenKind.Other, classifyScreen("com.android.settings", emptyList()))

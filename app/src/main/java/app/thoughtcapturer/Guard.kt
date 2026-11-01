@@ -82,6 +82,15 @@ sealed interface GuardAction {
     ) : GuardAction
 }
 
+val GUARDED_PACKAGES = setOf(
+    "com.instagram.android",
+    "com.google.android.youtube",
+    "com.zhiliaoapp.musically",
+    "com.ss.android.ugc.trill",
+)
+
+fun isGuardedPackage(pkg: String): Boolean = pkg.trim().lowercase() in GUARDED_PACKAGES
+
 /** Stage 1 local deterministic classifier identifying short-form feeds vs safe sections. */
 fun classifyScreen(pkg: String, nodes: List<ScreenNode>): ScreenKind {
     return when (pkg.trim().lowercase()) {
@@ -298,10 +307,17 @@ fun queryCalendarFocusBlocks(ctx: Context, nowMs: Long = System.currentTimeMilli
     }.getOrDefault(emptyList())
 }
 
+private var cachedCalendarAtMs = 0L
+private var cachedCalendarBlocks = emptyList<FocusBlock>()
+
 fun currentFocusBlock(ctx: Context, nowMs: Long = System.currentTimeMillis()): FocusBlock? {
+    if (cachedCalendarAtMs == 0L || kotlin.math.abs(nowMs - cachedCalendarAtMs) >= 60_000L) {
+        cachedCalendarBlocks = queryCalendarFocusBlocks(ctx, nowMs)
+        cachedCalendarAtMs = nowMs
+    }
     val manual = ctx.guardConfig().focusTask
     val fallbacks = stickies(ctx.prefs().getString("sticky", null)).map { it.title }
-    return selectFocusBlock(queryCalendarFocusBlocks(ctx, nowMs), manual, fallbacks)
+    return selectFocusBlock(cachedCalendarBlocks, manual, fallbacks)
 }
 
 /** Core policy evaluation deciding whether to allow, verify with Gemini, or interrupt. */

@@ -22,16 +22,18 @@ class GuardService : AccessibilityService() {
     internal var wasInShortForm = false
     internal var lastShortFormTickMs = 0L
     internal var lastScrollCountMs = 0L
-    private var launcherPkg: String? = null
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         val pkg = event.packageName?.toString().orEmpty()
 
-        if (isLauncherOrSystem(pkg)) {
+        if (!isGuardedPackage(pkg)) {
+            pendingCheck?.let { handler.removeCallbacks(it) }
+            pendingCheck = null
             flushShortFormTime()
             wasInShortForm = false
             consecVideos = 0
+            lastScrollCountMs = 0L
             return
         }
 
@@ -156,15 +158,6 @@ class GuardService : AccessibilityService() {
             }
         }
         return list
-    }
-
-    private fun isLauncherOrSystem(pkg: String): Boolean {
-        if (pkg.isEmpty() || pkg == "app.thoughtcapturer" || pkg == "com.android.systemui") return true
-        if (launcherPkg == null) {
-            val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-            launcherPkg = packageManager.resolveActivity(home, 0)?.activityInfo?.packageName.orEmpty()
-        }
-        return pkg == launcherPkg
     }
 
     internal fun trackShortForm(isShort: Boolean, eventType: Int, nowMs: Long): Boolean {
