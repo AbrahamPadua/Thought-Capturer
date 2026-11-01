@@ -149,7 +149,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         val calText = if (calendarGranted) "Calendar access granted." else "Calendar access not granted."
         val focusText = if (cfg.focusTask.isBlank()) "" else
             " Focus task until ${android.text.format.DateFormat.getTimeFormat(this).format(java.util.Date(cfg.focusUntilMs))}."
-        guardStatus.text = "$serviceText $calText$focusText\n\n${stats.summaryText(cfg)}"
+        val hookText = if (cfg.partnerTarget.startsWith("http://", ignoreCase = true)) " The partner webhook must start with https://." else ""
+        guardStatus.text = "$serviceText $calText$focusText$hookText\n\n${stats.summaryText(cfg)}"
 
         guardEnable.text = if (serviceActive) "Accessibility settings (active)" else "Enable Guard in Accessibility"
         guardCalendar.visibility = if (calendarGranted) View.GONE else View.VISIBLE

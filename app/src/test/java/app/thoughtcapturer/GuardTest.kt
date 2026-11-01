@@ -304,6 +304,7 @@ class GuardTest {
 
         assertFalse(sendAccountabilityNotice(ctx, "", "test"))
         assertFalse(sendAccountabilityNotice(ctx, "   ", "test"))
+        assertFalse(sendAccountabilityNotice(ctx, "http://example.com/hook", "test")) // refused, never sent unencrypted or texted
     }
 
     @Test

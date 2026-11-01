@@ -408,7 +408,9 @@ fun accountabilityMessage(mode: AccountabilityMode, focusTitle: String?): String
 fun sendAccountabilityNotice(ctx: Context, target: String, message: String): Boolean {
     val cleanTarget = target.trim()
     if (cleanTarget.isBlank()) return false
-    if (cleanTarget.startsWith("http://") || cleanTarget.startsWith("https://")) {
+    // Android blocks unencrypted traffic, and the notice names your focus task; Settings asks for https:// instead
+    if (cleanTarget.startsWith("http://", ignoreCase = true)) return false
+    if (cleanTarget.startsWith("https://", ignoreCase = true)) {
         return runCatching {
             val body = JSONObject().put("content", message).put("text", message).toString()
             http(cleanTarget, body = body, type = "application/json", readTimeout = 15_000)

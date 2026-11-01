@@ -87,7 +87,7 @@ Guard watches for short-form video feeds (Instagram Reels, YouTube Shorts, and T
    - `3 · Guard + Return to task`: shows your active focus commitment and next step, with buttons to return to your task, capture a thought first, or state an important purpose for a 5-minute pass.
    - `4 · Guard + Return + Accountability`: adds optional partner notifications when you repeatedly override a focus block.
 4. During an important-use pass, Guard checks on the phone that the screen still matches your stated purpose by looking for whole words from it in the screen's titles. A Reel or Short only gets through if its text shares a word with your purpose or Gemini judges it related. If the local check can't tell and you have a Gemini key set, it checks redacted headers with Gemini, and lets the screen through when offline.
-5. Tap **Accountability** to pick `Off`, `Supportive` (sends a low-shame check-in after repeated overrides, at most once every 2 hours), or `Consequence` (starts a 30-second countdown on the Guard screen with a **False positive, cancel** button before sending). Paste a webhook URL or phone number into the accountability field.
+5. Tap **Accountability** to pick `Off`, `Supportive` (sends a low-shame check-in after repeated overrides, at most once every 2 hours), or `Consequence` (starts a 30-second countdown on the Guard screen with a **False positive, cancel** button before sending). Paste an `https://` webhook URL or a phone number into the accountability field. Plain `http://` addresses are refused, since Android blocks unencrypted traffic and the message names your focus task.
 
 ## When something's off
 
