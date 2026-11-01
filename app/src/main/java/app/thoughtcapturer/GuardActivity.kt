@@ -1,5 +1,6 @@
 package app.thoughtcapturer
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
@@ -237,6 +238,8 @@ class GuardActivity : Activity() {
         handler.postDelayed(countdownRunnable, 1000L)
     }
 
+    // still called: the manifest opts this screen out of predictive back, which this lint check can't see
+    @SuppressLint("GestureBackNavigation")
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         cancelCountdown()
