@@ -319,11 +319,25 @@ class GuardTest {
         // Reveal purpose input and grant 5m pass (which also cancels countdown)
         activity.findViewById<android.widget.Button>(R.id.btnImportant).performClick()
         assertEquals(android.view.View.VISIBLE, activity.findViewById<android.view.View>(R.id.purposeInputGroup).visibility)
+
+        // New intent on singleInstance activity refreshes UI and collapses purpose input
+        val nextIntent = android.content.Intent(ctx, GuardActivity::class.java).apply {
+            putExtra("feed", "YouTube Shorts")
+            putExtra("reason", "Daily 15m short-form allowance used.")
+            putExtra("allowPurposePass", true)
+            putExtra("triggerCountdown", false)
+        }
+        controller.newIntent(nextIntent)
+        assertEquals("YouTube Shorts paused", activity.findViewById<android.widget.TextView>(R.id.headline).text.toString())
+        assertEquals(android.view.View.GONE, activity.findViewById<android.view.View>(R.id.purposeInputGroup).visibility)
+        assertEquals(android.view.View.GONE, activity.findViewById<android.view.View>(R.id.countdownContainer).visibility)
+
+        activity.findViewById<android.widget.Button>(R.id.btnImportant).performClick()
         activity.findViewById<android.widget.EditText>(R.id.purposeInput).setText("message lab partner")
         activity.findViewById<android.widget.Button>(R.id.btnGrantPass).performClick()
         assertEquals("message lab partner", ctx.prefs().getString("guard_pass_intent", ""))
         assertTrue(activity.isFinishing)
-        controller.destroy()
+        controller.stop().destroy()
     }
 
     @Test

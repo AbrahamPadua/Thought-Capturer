@@ -40,7 +40,17 @@ class GuardActivity : Activity() {
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         setContentView(R.layout.guard)
+        bind()
+    }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        bind()
+    }
+
+    private fun bind() {
+        cancelCountdown()
         val feed = intent.getStringExtra("feed") ?: "Short-form feed"
         val reason = intent.getStringExtra("reason") ?: "Focus session active"
         focusTitle = intent.getStringExtra("focusTitle")
@@ -119,6 +129,9 @@ class GuardActivity : Activity() {
         val inputGroup = findViewById<LinearLayout>(R.id.purposeInputGroup)
         val input = findViewById<EditText>(R.id.purposeInput)
         val btnGrantPass = findViewById<Button>(R.id.btnGrantPass)
+        inputGroup.visibility = View.GONE
+        input.setText("")
+        input.error = null
 
         btnImportant.setOnClickListener {
             inputGroup.visibility = View.VISIBLE
@@ -246,6 +259,11 @@ class GuardActivity : Activity() {
 
     private fun cancelCountdown() {
         handler.removeCallbacks(countdownRunnable)
+    }
+
+    override fun onStop() {
+        cancelCountdown()
+        super.onStop()
     }
 
     override fun onDestroy() {
