@@ -262,6 +262,33 @@ fun outcome(hasAudio: Boolean, split: String, shown: String, typed: String, trie
     return if (raw.isBlank()) Outcome.Drop else Outcome.Save(raw)
 }
 
+/**
+ * Makes a split's Graph calls in order, resuming after the last one that landed (the done counter in prefs under
+ * [k]). [call] is http with the sign-in attached: url, body (null for a GET), content type. Tests pass a fake.
+ */
+internal fun Context.fileUploads(k: String, parsed: Split, raw: String, at: Long, tz: String, call: (String, String?, String) -> JSONObject) {
+    val p = prefs()
+    val (tasks, note) = parsed
+    val listId by lazy { defaultListId { call(it, null, "") } } // a note-only capture never needs it
+    val todo = uploads(parsed)
+    for (u in p.getInt("${k}_done", 0) until todo.size) {
+        val e = p.edit().putInt("${k}_done", u + 1)
+        when (val up = todo[u]) {
+            // the new task's id is saved with the counter, so its steps find it even after a retry
+            is Upload.ToDo -> e.putString("${k}_task${up.task}",
+                call("$TODO_LISTS/$listId/tasks", taskJson(tasks[up.task], raw, tz).toString(), "application/json").getString("id"))
+            is Upload.Step -> call("$TODO_LISTS/$listId/tasks/${p.getString("${k}_task${up.task}", null)}/checklistItems",
+                JSONObject().put("displayName", tasks[up.task].steps[up.step]).toString(), "application/json")
+            Upload.Page -> {
+                val page = call(ONENOTE_PAGES, noteHtml(note!!, raw, at), "text/html")
+                stick(stickiesFor(k, note, at, page.optJSONObject("links")))
+            }
+        }
+        // shortcut: a POST that lands but whose reply is lost gets sent again on retry (rare duplicate, never a lost capture)
+        e.commit()
+    }
+}
+
 /** Errors that usually clear within a minute: Microsoft throttling (429), a server hiccup (5xx), a stalled connection. */
 internal fun passing(e: Exception) = e is SocketTimeoutException || e is HttpError && (e.code == 429 || e.code >= 500)
 
@@ -326,29 +353,10 @@ class SaveJob : JobService() {
         if (cached == null) p.edit().putString("${k}_split", split).commit()
         val parsed = parseSplit(split, raw)
         val (tasks, note) = parsed
-        val token = accessToken(this)
-        val auth = mapOf("Authorization" to "Bearer $token")
-        val listId by lazy { defaultListId { http(it, headers = auth) } } // a note-only capture never needs it
+        val auth = mapOf("Authorization" to "Bearer ${accessToken(this)}")
         // Graph wants Windows zone names ("Pacific Standard Time"), same as canvas-todo-sync sends
         val tz = android.icu.util.TimeZone.getWindowsID(java.util.TimeZone.getDefault().id) ?: "UTC"
-        // the done counter lets a retry resume after the last upload that landed
-        val todo = uploads(parsed)
-        for (u in p.getInt("${k}_done", 0) until todo.size) {
-            val e = p.edit().putInt("${k}_done", u + 1)
-            when (val up = todo[u]) {
-                // the new task's id is saved with the counter, so its steps find it even after a retry
-                is Upload.ToDo -> e.putString("${k}_task${up.task}",
-                    http("$TODO_LISTS/$listId/tasks", taskJson(tasks[up.task], raw, tz).toString(), headers = auth).getString("id"))
-                is Upload.Step -> http("$TODO_LISTS/$listId/tasks/${p.getString("${k}_task${up.task}", null)}/checklistItems",
-                    JSONObject().put("displayName", tasks[up.task].steps[up.step]).toString(), headers = auth)
-                Upload.Page -> {
-                    val page = http(ONENOTE_PAGES, noteHtml(note!!, raw, at), "text/html", auth)
-                    stick(stickiesFor(k, note, at, page.optJSONObject("links")))
-                }
-            }
-            // shortcut: a POST that lands but whose reply is lost gets sent again on retry (rare duplicate, never a lost capture)
-            e.commit()
-        }
+        fileUploads(k, parsed, raw, at, tz) { url, body, type -> http(url, body, type, auth) }
         val done = p.edit().remove("${k}_split").remove("${k}_done").remove("${k}_tries").remove("last_error")
         tasks.indices.forEach { done.remove("${k}_task$it") }
         done.putString("last_filed", "${tasks.size} ${if (note == null) 0 else 1}").apply() // read by the code strip (Codes.kt)
