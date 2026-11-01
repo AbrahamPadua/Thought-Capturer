@@ -83,7 +83,7 @@ Guard watches for short-form video feeds (Instagram Reels, YouTube Shorts, and T
 2. Tap **Allow calendar focus blocks** if you want Guard to treat calendar events like classes (`CSE 100`, `COGS 108`), study blocks, and homework sessions as active focus time. You can also type a current focus task directly in Settings.
 3. Tap **Stage** to cycle through the four evaluation stages:
    - `1 · Baseline`: logs short-form feed time without interrupting.
-   - `2 · Guard only`: blocks Reels, Shorts, and TikTok during focus blocks or after your daily short-form budget or 5-video streak limit.
+   - `2 · Guard only`: locks Reels, Shorts, and TikTok by default; outside focus blocks you can take 5-minute leisure breaks up to your daily budget or 5-video streak limit.
    - `3 · Guard + Return to task`: shows your active focus commitment and next step, with buttons to return to your task, capture a thought first, or state an important purpose for a 5-minute pass.
    - `4 · Guard + Return + Accountability`: adds optional partner notifications when you repeatedly override a focus block.
 4. During an important-use pass, Guard checks on the phone that the screen still matches your stated purpose (and blocks Reels or Shorts immediately). If the local check can't tell from the screen headers and you have a Gemini key set, it checks redacted headers with Gemini and fails open when offline.

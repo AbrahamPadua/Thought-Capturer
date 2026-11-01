@@ -78,7 +78,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             val modes = AccountabilityMode.entries
             val next = modes[(current.accountabilityMode.ordinal + 1) % modes.size]
             saveGuardConfig(current.copy(accountabilityMode = next))
-            if (next != AccountabilityMode.OFF && partnerTarget.text.any { it.isDigit() }) {
+            val target = partnerTarget.text.toString().trim()
+            if (next != AccountabilityMode.OFF && !target.startsWith("http") && target.any { it.isDigit() }) {
                 if (checkSelfPermission(android.Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
                     requestPermissions(arrayOf(android.Manifest.permission.SEND_SMS), 101)
                 }

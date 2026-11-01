@@ -157,6 +157,8 @@ class GuardTest {
         assertTrue(isFocusEventTitle("Homework session", "Working on lab 3"))
         assertFalse(isFocusEventTitle("Dentist appointment"))
         assertFalse(isFocusEventTitle("Lunch with Alex"))
+        assertFalse(isFocusEventTitle("Dinner at 7"))
+        assertFalse(isFocusEventTitle("Collab call"))
     }
 
     @Test

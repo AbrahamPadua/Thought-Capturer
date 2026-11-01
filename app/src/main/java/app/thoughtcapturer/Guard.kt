@@ -235,16 +235,12 @@ fun verifyPurposeGemini(
     }.getOrDefault(true)
 }
 
-private val FOCUS_WORDS = setOf(
-    "focus", "study", "research", "homework", "assignment", "exam",
-    "lecture", "lab", "paper", "thesis", "project", "coursework"
-)
-private val COURSE_CODE_REGEX = Regex("""\b[A-Za-z]{2,5}\s*\d{1,3}[A-Za-z]?\b""")
+private val FOCUS_WORDS_REGEX = Regex("""\b(focus|study|research|homework|assignment|exam|lecture|lab|paper|thesis|project|coursework)\b""", RegexOption.IGNORE_CASE)
+private val COURSE_CODE_REGEX = Regex("""\b[A-Z]{2,5}\s*\d{1,3}[A-Z]?\b""")
 
 fun isFocusEventTitle(title: String, desc: String = ""): Boolean {
-    val combined = "$title $desc".lowercase()
-    if (FOCUS_WORDS.any { it in combined }) return true
-    return COURSE_CODE_REGEX.containsMatchIn("$title $desc")
+    val combined = "$title $desc"
+    return FOCUS_WORDS_REGEX.containsMatchIn(combined) || COURSE_CODE_REGEX.containsMatchIn(combined)
 }
 
 fun selectFocusBlock(
@@ -425,7 +421,7 @@ fun sendAccountabilityNotice(ctx: Context, target: String, message: String): Boo
     }
     return runCatching {
         val sms = ctx.getSystemService(android.telephony.SmsManager::class.java) ?: return false
-        sms.sendTextMessage(cleanTarget, null, message, null, null)
+        sms.sendMultipartTextMessage(cleanTarget, null, sms.divideMessage(message), null, null)
         true
     }.getOrDefault(false)
 }
