@@ -65,8 +65,10 @@
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
+        <!-- predictive back off: on Android 16 it would skip onBackPressed, so swiping back dropped you into the feed uncounted -->
         <activity
             android:name=".GuardActivity"
+            android:enableOnBackInvokedCallback="false"
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleInstance" />
