@@ -18,8 +18,11 @@ import android.speech.SpeechRecognizer
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.StyleSpan
+import android.os.CombinedVibration
+import android.os.VibrationAttributes
+import android.os.VibrationEffect
+import android.os.VibratorManager
 import android.util.Log
-import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
@@ -119,7 +122,7 @@ class CaptureActivity : Activity(), RecognitionListener {
             render()
         }
         findViewById<View>(R.id.done).setOnClickListener {
-            it.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            buzz(VibrationEffect.EFFECT_DOUBLE_CLICK)
             save(animate = true)
         }
         findViewById<View>(R.id.type).setOnClickListener { type() }
@@ -138,6 +141,12 @@ class CaptureActivity : Activity(), RecognitionListener {
     }
 
     private fun listening() = if (key == null) LISTENING_NO_KEY else LISTENING
+
+    // the vibrator itself, not haptic feedback: the owner keeps system vibration off for typing but wants these felt
+    private fun buzz(effect: Int) = getSystemService(VibratorManager::class.java).vibrate(
+        CombinedVibration.createParallel(VibrationEffect.createPredefined(effect)),
+        VibrationAttributes.Builder().setUsage(VibrationAttributes.USAGE_MEDIA).build(),
+    )
 
     private fun start() {
         if (recorder != null) return
@@ -167,8 +176,7 @@ class CaptureActivity : Activity(), RecognitionListener {
             return micProblem("Couldn't open the microphone. Tap the lines to try again, or type.")
         }
         recorder = r
-        // a buzz says it's listening, so a capture can start without looking; post waits until the view can buzz
-        plot.post { plot.performHapticFeedback(HapticFeedbackConstants.CONFIRM) }
+        buzz(VibrationEffect.EFFECT_HEAVY_CLICK) // it's listening, so a capture can start without looking
         micError = false
         plot.isClickable = false
         plot.listening = true

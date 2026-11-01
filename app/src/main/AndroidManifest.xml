@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- lets queued captures survive a reboot (JobInfo.setPersisted) -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- the buzz when the mic opens and on Done, which plays even with system vibration off -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- Android 11+ hides the speech service from SpeechRecognizer without this -->
     <queries>
