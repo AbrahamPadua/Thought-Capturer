@@ -21,8 +21,6 @@ class GuardService : AccessibilityService() {
     private var pendingCheck: Runnable? = null
     private var lastInterruptMs = 0L
     private var lastGeminiCheckMs = 0L
-    private var lastGeminiIntent = ""
-    private var lastGeminiHeaders = emptyList<String>()
     internal var consecVideos = 0
     internal var wasInShortForm = false
     internal var lastShortFormTickMs = 0L
@@ -98,7 +96,7 @@ class GuardService : AccessibilityService() {
         when (action) {
             is GuardAction.Allow -> { /* allow */ }
             is GuardAction.CheckGemini -> {
-                if (shouldCheckGemini(action.intent, action.headers, nowMs)) {
+                if (shouldCheckGemini(nowMs)) {
                     val key = prefs().getString("gemini_key", "").orEmpty()
                     val leisureRemainingMin = ((cfg.leisureBudgetMin * 60 - stats.shortFormSec).coerceAtLeast(0)) / 60
                     thread {
@@ -169,12 +167,10 @@ class GuardService : AccessibilityService() {
         return list
     }
 
-    internal fun shouldCheckGemini(intent: String, headers: List<String>, nowMs: Long): Boolean {
-        val sameQuery = intent == lastGeminiIntent && headers == lastGeminiHeaders
-        if (sameQuery && lastGeminiCheckMs > 0L && nowMs - lastGeminiCheckMs < 20_000L) return false
+    // one check per 20 s whatever the screen says: every swipe changes its text, so a per-question limit meant a call per scroll
+    internal fun shouldCheckGemini(nowMs: Long): Boolean {
+        if (lastGeminiCheckMs > 0L && nowMs - lastGeminiCheckMs < 20_000L) return false
         lastGeminiCheckMs = nowMs
-        lastGeminiIntent = intent
-        lastGeminiHeaders = headers
         return true
     }
 

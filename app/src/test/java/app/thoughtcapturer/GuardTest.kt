@@ -397,12 +397,11 @@ class GuardTest {
         assertFalse(svc.shouldResetOnNonGuardedEvent("com.android.chrome", content))
         assertTrue(svc.shouldResetOnNonGuardedEvent("com.android.chrome", winState))
 
-        // Gemini check cache deduplicates identical (intent, headers) for 20s, but checks new headers or intents immediately
-        assertTrue(svc.shouldCheckGemini("study", listOf("video 1"), 1_000L))
-        assertFalse(svc.shouldCheckGemini("study", listOf("video 1"), 5_000L))
-        assertTrue(svc.shouldCheckGemini("study", listOf("video 2"), 5_000L))
-        assertTrue(svc.shouldCheckGemini("new purpose", listOf("video 2"), 6_000L))
-        assertTrue(svc.shouldCheckGemini("new purpose", listOf("video 2"), 27_000L))
+        // At most one Gemini check every 20 s, even as each swipe brings new screen text
+        assertTrue(svc.shouldCheckGemini(1_000L))
+        assertFalse(svc.shouldCheckGemini(5_000L))
+        assertFalse(svc.shouldCheckGemini(20_000L))
+        assertTrue(svc.shouldCheckGemini(21_000L))
 
         // Exact accessibility component matching
         assertTrue(isServiceInEnabledList("com.other/.Svc:app.thoughtcapturer/app.thoughtcapturer.GuardService", "app.thoughtcapturer"))
