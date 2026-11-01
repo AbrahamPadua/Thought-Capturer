@@ -174,9 +174,12 @@ fun defaultListId(get: (String) -> JSONObject): String {
 private const val SPEECH_RULES = "The speaker has an Asian accent and may mix English, Tagalog and Spanish in one sentence. " +
     "Write every word in the language it was spoken; never translate. Where the accent makes a word ambiguous, choose the most likely word in context."
 
-// shortcut: Gemini takes about 20MB inline; past ~6 minutes of speech (long silences are trimmed out) only the first
-// MAX_AUDIO bytes go inline. Use the Files API if longer notes matter.
+// shortcut: Gemini takes about 20MB inline; past ~6 minutes of speech (long silences are trimmed out) the job sends the
+// full on-screen text instead, or the first MAX_AUDIO bytes if no live words appeared. Use the Files API if longer notes matter.
 const val MAX_AUDIO = 12_000_000L
+
+internal fun selectAudio(file: File?, shown: String, maxBytes: Long = MAX_AUDIO): File? =
+    file?.takeIf { it.isFile && it.length() > 0 && (it.length() <= maxBytes || shown.isBlank()) }
 
 internal fun readAudioCap(file: File?, cap: Int = MAX_AUDIO.toInt()): ByteArray? =
     file?.takeIf { it.isFile && it.length() > 0 }?.inputStream()?.use { it.readNBytes(cap) }
@@ -332,7 +335,7 @@ class SaveJob : JobService() {
     private fun save(params: JobParameters) {
         val shown = params.extras.getString("text")!! // what the screen showed: the fallback if Gemini can't help
         val typed = params.extras.getString("typed").orEmpty()
-        val audio = params.extras.getString("audio")?.let(::File)?.takeIf { it.isFile && it.length() > 0 }
+        val audio = selectAudio(params.extras.getString("audio")?.let(::File), shown)
         val at = params.extras.getLong("at")
         val p = prefs()
         val k = "job${params.jobId}"

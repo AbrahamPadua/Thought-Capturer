@@ -62,10 +62,14 @@ class OutcomeTest {
     }
 
     @Test
-    fun oversizedAudioReadsFirstCapBytesInsteadOfDroppingFile() {
+    fun oversizedAudioUsesFullShownTextWhenAvailableOrCappedAudioWhenBlank() {
         val f = java.io.File.createTempFile("capture", ".pcm")
         try {
             f.writeBytes(ByteArray(100) { it.toByte() })
+            // When shown text exists and audio exceeds cap, fall back to full shown text (selectAudio returns null)
+            org.junit.Assert.assertNull(selectAudio(f, shown = "full nine minute transcript", maxBytes = 40))
+            // When shown text is blank and audio exceeds cap, keep audio and read first cap bytes
+            assertEquals(f, selectAudio(f, shown = "", maxBytes = 40))
             val capped = readAudioCap(f, cap = 40)!!
             assertEquals(40, capped.size)
             assertEquals(39.toByte(), capped.last())
