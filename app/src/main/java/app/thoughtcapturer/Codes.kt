@@ -31,13 +31,15 @@ internal fun Status.describe(): String = listOfNotNull(
     "Sync error".takeIf { syncError },
 ).joinToString(". ")
 
-fun LinearLayout.showStatus(s: Status) {
+fun LinearLayout.showBlocks(colors: List<Int>, description: String) {
     removeAllViews()
     val dp = resources.displayMetrics.density
-    for (color in s.codes()) addView(View(context).apply {
+    for (color in colors) addView(View(context).apply {
         setBackgroundColor(context.getColor(color))
         layoutParams = LinearLayout.LayoutParams((18 * dp).toInt(), (6 * dp).toInt()).apply { marginEnd = (4 * dp).toInt() }
     })
-    contentDescription = s.describe()
+    contentDescription = description
     visibility = if (childCount == 0) View.GONE else View.VISIBLE // an empty strip would leave a gap under its label
 }
+
+fun LinearLayout.showStatus(s: Status) = showBlocks(s.codes(), s.describe())

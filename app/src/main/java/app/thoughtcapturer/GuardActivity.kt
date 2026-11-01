@@ -95,24 +95,17 @@ class GuardActivity : Activity() {
     }
 
     private fun setupCodeStrip(strip: LinearLayout, hasOption: Boolean) {
-        strip.removeAllViews()
-        val dp = resources.displayMetrics.density
-        fun addBlock(colorRes: Int) {
-            strip.addView(View(this).apply {
-                setBackgroundColor(getColor(colorRes))
-                layoutParams = LinearLayout.LayoutParams((18 * dp).toInt(), (6 * dp).toInt()).apply {
-                    marginEnd = (4 * dp).toInt()
-                }
-            })
+        val colors = buildList {
+            add(R.color.code_error)
+            if (focusTitle != null) add(R.color.code_todo)
+            if (hasOption) add(R.color.code_note)
         }
-        addBlock(R.color.code_error)
-        if (focusTitle != null) addBlock(R.color.code_todo)
-        if (hasOption) addBlock(R.color.code_note)
-        strip.contentDescription = listOfNotNull(
+        val desc = listOfNotNull(
             "Interrupted feed",
             "Focus task active".takeIf { focusTitle != null },
             "Pass or leisure option available".takeIf { hasOption },
         ).joinToString(". ")
+        strip.showBlocks(colors, desc)
     }
 
     private fun setupPurposeSection(allowPurposePass: Boolean, sendSupportiveNotice: Boolean) {
