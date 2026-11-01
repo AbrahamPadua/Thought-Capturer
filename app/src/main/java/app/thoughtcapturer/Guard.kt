@@ -219,17 +219,7 @@ fun geminiIntentCall(intent: String, headers: List<String>, key: String): String
     val prompt = "Stated purpose: $intent\nVisible screen titles: ${headers.joinToString(" | ")}\nCould this screen plausibly relate to the stated purpose (including searching, navigating, or viewing related material)? Return JSON {\"matches\": true} unless it is clearly unrelated entertainment."
     val schema = JSONObject("""{"type":"OBJECT","properties":{"matches":{"type":"BOOLEAN"}},"required":["matches"]}""")
     val config = JSONObject().put("responseMimeType", "application/json").put("responseSchema", schema)
-    val parts = JSONArray().put(JSONObject().put("text", prompt))
-    val req = JSONObject().put("contents", JSONArray().put(JSONObject().put("parts", parts))).put("generationConfig", config)
-    val r = http(
-        "https://generativelanguage.googleapis.com/v1beta/models/$GEMINI_MODEL:generateContent",
-        req.toString(),
-        headers = mapOf("x-goog-api-key" to key),
-        readTimeout = 15_000,
-    )
-    val out = r.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts")
-    return (0 until out.length()).map { out.getJSONObject(it) }
-        .first { it.has("text") && !it.optBoolean("thought") }.getString("text")
+    return gemini(key, JSONArray().put(JSONObject().put("text", prompt)), config, readTimeout = 15_000)
 }
 
 /** Fail-open Gemini semantic verification wrapper. */

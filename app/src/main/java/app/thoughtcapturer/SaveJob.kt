@@ -189,12 +189,12 @@ private fun audioPart(pcm: ByteArray) = JSONObject().put(
     "inlineData", JSONObject().put("mimeType", "audio/wav").put("data", java.util.Base64.getEncoder().encodeToString(wav(pcm)))
 )
 
-private fun gemini(key: String, parts: JSONArray, config: JSONObject): String {
+internal fun gemini(key: String, parts: JSONArray, config: JSONObject, readTimeout: Int = 180_000): String {
     val req = JSONObject().put("contents", JSONArray().put(JSONObject().put("parts", parts))).put("generationConfig", config)
     val r = http(
         "https://generativelanguage.googleapis.com/v1beta/models/$GEMINI_MODEL:generateContent",
         req.toString(), headers = mapOf("x-goog-api-key" to key),
-        readTimeout = 180_000, // transcribing minutes of audio can outlast the usual minute
+        readTimeout = readTimeout, // transcribing minutes of audio can outlast the usual minute
     )
     val out = r.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts")
     return (0 until out.length()).map { out.getJSONObject(it) }
