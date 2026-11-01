@@ -112,7 +112,8 @@ class PulsePlotView(context: Context, attrs: AttributeSet?) : View(context, attr
     /** Loudness 0..1 from the recorder, about 20 times a second. */
     fun setLevel(level: Float) {
         target = if (animate) level else stepped(level, 5)
-        if (target > 0.12f) lastLoud = SystemClock.uptimeMillis()
+        // solid only for what the recorder keeps as speech, so softer talk shows dashed: speak up
+        if (target >= SPEECH) lastLoud = SystemClock.uptimeMillis()
         segmentPeak = maxOf(segmentPeak, target)
         segment.pushCapped(target, 600) // a minute of speech is plenty for one line
         if (!animate) shown = target

@@ -28,8 +28,11 @@ internal fun levelOf(samples: ShortArray, count: Int): Float {
     return ((dbfs + 55) / 40).toFloat().coerceIn(0f, 1f)
 }
 
+/** Loudness that counts as speech: it starts sentences, keeps the recording for Gemini, and turns the plot's line solid. */
+internal const val SPEECH = 0.25f
+
 /** Cuts speech into sentences at pauses: a cut comes after [pauseMs] of quiet that follows at least [minSpeechMs] of speech. */
-internal class Segmenter(private val threshold: Float = 0.25f, private val pauseMs: Long = 700, private val minSpeechMs: Long = 300) {
+internal class Segmenter(private val threshold: Float = SPEECH, private val pauseMs: Long = 700, private val minSpeechMs: Long = 300) {
     private var speechMs = 0L
     private var quietMs = 0L
 
