@@ -12,7 +12,7 @@ One user: the owner, a student, on a Samsung Galaxy Z Flip 7. They reach Capture
 
 ## Product Purpose
 
-One tap opens a capture screen that is already listening. The user talks, or types, until they tap Done; the text is queued and uploaded in the background. Gemini splits it into to-dos with due dates and an organized note. To-dos land in Microsoft To Do's Tasks list and notes in a OneNote section named Capture. Success means the thought is filed correctly without fiddling, and the user is back on task.
+One tap opens a capture screen that is already listening. The user talks, or types, until they tap Done; the text is queued and uploaded in the background. Gemini splits it into to-dos (with due dates, reminders and steps), an organized note, and a Later list of maybes. To-dos land in Microsoft To Do's Tasks list and notes in a OneNote section named Capture. Success means the thought is filed correctly without fiddling, and the user is back on task.
 
 ## Positioning
 
@@ -28,7 +28,7 @@ Capture is a front door, not another inbox. It files into the places the user al
 ## Capabilities and Constraints
 
 - Native Android in Kotlin with plain Android Views, no Compose or AndroidX. minSdk 31, targetSdk 36. A debug-signed sideload built on the owner's PC.
-- Speech comes from SpeechRecognizer: live partial words, finished sentences, and voice level (`onRmsChanged`).
+- Speech is one continuous recording. Android's recognizer reads it for rough live words, Gemini corrects each finished sentence and transcribes the whole recording at upload, and its loudness drives the plot.
 - Recording runs until Done (save) or Cancel (discard). Pauses and touches don't stop it, leaving the app saves, and the screen stays on while it's open.
 - Uploads are expedited JobScheduler jobs that survive being offline and rebooting. Failures show in Settings.
 - Settings holds the Microsoft device-code sign-in, the Gemini key, and queue status with the last errors.

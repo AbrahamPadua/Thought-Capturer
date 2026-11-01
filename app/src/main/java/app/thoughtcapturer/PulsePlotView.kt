@@ -82,7 +82,7 @@ class PulsePlotView(context: Context, attrs: AttributeSet?) : View(context, attr
     private val path = Path()
 
     private val frozen = mutableListOf<FloatArray>()
-    private val segment = mutableListOf<Float>() // this sentence's levels so far, about 10 a second
+    private val segment = mutableListOf<Float>() // this sentence's levels so far, about 20 a second
     private var target = 0f
     private var shown = 0f
     private var segmentPeak = 0f
@@ -92,7 +92,7 @@ class PulsePlotView(context: Context, attrs: AttributeSet?) : View(context, attr
     private var lastFrame = 0L
     private var folded = 0f // 0 open, 1 collapsed onto the front line
 
-    /** True while the recognizer is running; when false the front line rests flat and dashed. */
+    /** True while recording; when false the front line rests flat and dashed. */
     var listening = false
         set(value) {
             field = value
@@ -115,7 +115,7 @@ class PulsePlotView(context: Context, attrs: AttributeSet?) : View(context, attr
         // solid only for what the recorder keeps as speech, so softer talk shows dashed: speak up
         if (target >= SPEECH) lastLoud = SystemClock.uptimeMillis()
         segmentPeak = maxOf(segmentPeak, target)
-        segment.pushCapped(target, 600) // a minute of speech is plenty for one line
+        segment.pushCapped(target, 1200) // a minute of speech is plenty for one line
         if (!animate) shown = target
         invalidate()
     }
@@ -154,7 +154,7 @@ class PulsePlotView(context: Context, attrs: AttributeSet?) : View(context, attr
             val dt = if (lastFrame == 0L) 16f else (now - lastFrame).coerceAtMost(64).toFloat()
             shown += (target - shown) * (1 - exp(-dt / 90f))
             phase += dt / 1000f * (0.8f + 6f * shown)
-            target *= exp(-dt / 550f) // decay between the recognizer's ~10 reports a second; by time, so 60 and 120Hz match
+            target *= exp(-dt / 550f) // decay between the recorder's ~20 reports a second; by time, so 60 and 120Hz match
         }
         lastFrame = now
         // dashed means "listening, nothing heard"; the fold is a filed capture, so it stays solid
