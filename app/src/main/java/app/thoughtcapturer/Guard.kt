@@ -249,18 +249,13 @@ fun isFocusEventTitle(title: String, desc: String = ""): Boolean {
     return FOCUS_WORDS_REGEX.containsMatchIn(combined) || COURSE_CODE_REGEX.containsMatchIn(combined)
 }
 
-fun selectFocusBlock(
-    calendarEvents: List<FocusBlock>,
-    manualFocusTask: String,
-    fallbackTasks: List<String> = emptyList(),
-): FocusBlock? {
+fun selectFocusBlock(calendarEvents: List<FocusBlock>, manualFocusTask: String): FocusBlock? {
     if (calendarEvents.isNotEmpty()) {
         val first = calendarEvents.first()
-        val next = first.nextAction ?: manualFocusTask.ifBlank { fallbackTasks.firstOrNull() }
-        return first.copy(nextAction = next)
+        return first.copy(nextAction = first.nextAction ?: manualFocusTask.ifBlank { null })
     }
     if (manualFocusTask.isNotBlank()) {
-        return FocusBlock(manualFocusTask.trim(), fallbackTasks.firstOrNull())
+        return FocusBlock(manualFocusTask.trim())
     }
     return null
 }
@@ -305,9 +300,7 @@ fun currentFocusBlock(ctx: Context, nowMs: Long = System.currentTimeMillis()): F
         cachedCalendarBlocks = queryCalendarFocusBlocks(ctx, nowMs)
         cachedCalendarAtMs = nowMs
     }
-    val manual = ctx.guardConfig().focusTask
-    val fallbacks = stickies(ctx.prefs().getString("sticky", null)).map { it.title }
-    return selectFocusBlock(cachedCalendarBlocks, manual, fallbacks)
+    return selectFocusBlock(cachedCalendarBlocks, ctx.guardConfig().focusTask)
 }
 
 /** Core policy evaluation deciding whether to allow, verify with Gemini, or interrupt. */

@@ -168,16 +168,17 @@ class GuardTest {
     @Test
     fun selectsFocusBlockWithPriority() {
         val calendarEvents = listOf(FocusBlock("COGS 108", null, 1000L))
-        val selected = selectFocusBlock(calendarEvents, "Write proof", listOf("Do quiz"))
+        val selected = selectFocusBlock(calendarEvents, "Write proof")
         assertEquals(FocusBlock("COGS 108", "Write proof", 1000L), selected)
+        // no next step is made up (a parked "maybe" from the sticky note is not one)
+        assertEquals(FocusBlock("COGS 108", null, 1000L), selectFocusBlock(calendarEvents, ""))
 
         val withExistingAction = listOf(FocusBlock("COGS 108", "Finish draft", 1000L))
         assertEquals(FocusBlock("COGS 108", "Finish draft", 1000L), selectFocusBlock(withExistingAction, "Write proof"))
 
-        val fromManual = selectFocusBlock(emptyList(), "Finish report", listOf("Fallback item"))
-        assertEquals(FocusBlock("Finish report", "Fallback item"), fromManual)
+        assertEquals(FocusBlock("Finish report"), selectFocusBlock(emptyList(), "Finish report"))
 
-        assertNull(selectFocusBlock(emptyList(), "", listOf("Fallback item")))
+        assertNull(selectFocusBlock(emptyList(), ""))
     }
 
     @Test
