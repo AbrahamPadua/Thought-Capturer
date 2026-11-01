@@ -326,6 +326,7 @@ fun evaluateGuard(
 
     var overrideReason: String? = null
     if (nowMs < passUntilMs) {
+        if (passIntent == "false positive") return GuardAction.Allow
         when (val m = verifyPurposeLocal(passIntent, pkg, kind, nodes)) {
             PurposeMatch.Match -> return GuardAction.Allow
             is PurposeMatch.Uncertain -> {

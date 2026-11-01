@@ -218,6 +218,9 @@ class GuardTest {
         val passNodes = listOf(ScreenNode(text = "Unrelated cooking video"))
         val geminiCheck = evaluateGuard(returnConfig, ScreenKind.SafeSection("YouTube Video"), passNodes, "com.google.android.youtube", null, stats, 100L, 500L, "cse 100", 0L, 0)
         assertTrue(geminiCheck is GuardAction.CheckGemini)
+
+        // False-positive cancel pass allows ShortForm screen without re-interrupting
+        assertEquals(GuardAction.Allow, evaluateGuard(returnConfig, shortKind, emptyList(), "com.instagram.android", focus, stats, 100L, 500L, "false positive", 0L, 0))
     }
 
     @Test
