@@ -118,6 +118,10 @@ class GuardTest {
         val reelMatch = verifyPurposeLocal("watch cse 100 demo", "com.instagram.android", reelsKind, matchNodes)
         assertEquals(PurposeMatch.Match, reelMatch)
 
+        // a purpose word hidden inside another word is not a match
+        val collab = listOf(ScreenNode(text = "Collab with Label Records"))
+        assertTrue(verifyPurposeLocal("check lab schedule", "com.instagram.android", reelsKind, collab) is PurposeMatch.Uncertain)
+
         val unrelatedNodes = listOf(ScreenNode(text = "Top 10 Hilarious Cat Compilation 2026"))
         val uncertainResult = verifyPurposeLocal("study cse 100", "com.google.android.youtube", ScreenKind.SafeSection("YouTube Video"), unrelatedNodes)
         assertTrue(uncertainResult is PurposeMatch.Uncertain)

@@ -187,6 +187,8 @@ private val STOPWORDS = setOf(
     "check", "open", "about", "from", "into", "that", "this"
 )
 
+private fun words(s: String) = Regex("[a-zA-Z0-9]+").findAll(s.lowercase()).map { it.value }.toList()
+
 /** Stage 2 local semantic check verifying if screen titles match stated purpose. */
 fun verifyPurposeLocal(
     intent: String,
@@ -198,8 +200,7 @@ fun verifyPurposeLocal(
     if (kind is ScreenKind.ShortForm && headers.isEmpty()) {
         return PurposeMatch.Mismatch("${kind.feedName} is blocked during an important-use pass.")
     }
-    val tokens = Regex("[a-zA-Z0-9]+").findAll(intent.lowercase()).map { it.value }.toList()
-    val keywords = tokens.filter { it.length >= 3 && it !in STOPWORDS }
+    val keywords = words(intent).filter { it.length >= 3 && it !in STOPWORDS }
 
     if (kind == ScreenKind.SafeSection("Instagram DMs") || kind is ScreenKind.GuardedApp) {
         return PurposeMatch.Match
@@ -207,8 +208,9 @@ fun verifyPurposeLocal(
 
     if (headers.isEmpty()) return PurposeMatch.Match
 
-    val headersText = headers.joinToString(" ").lowercase()
-    if (keywords.any { it in headersText }) return PurposeMatch.Match
+    // whole words: as a substring, "lab" would match "Collab", "Label" and "Available" on almost any Reel
+    val headerWords = headers.flatMap(::words).toSet()
+    if (keywords.any { it in headerWords }) return PurposeMatch.Match
 
     return PurposeMatch.Uncertain(headers)
 }
