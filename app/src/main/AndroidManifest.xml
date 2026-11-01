@@ -11,6 +11,8 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.SEND_SMS" />
+    <!-- SMS is one optional way to reach a partner; without this a phone radio would be required to install at all -->
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
     <!-- Android 11+ hides the speech service from SpeechRecognizer without this -->
     <queries>
