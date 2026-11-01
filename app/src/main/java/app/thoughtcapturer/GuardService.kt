@@ -104,9 +104,11 @@ class GuardService : AccessibilityService() {
                     thread {
                         val matches = verifyPurposeGemini(action.intent, action.headers, key)
                         if (!matches) {
-                            prefs().edit().remove("guard_pass_until").apply()
-                            updateGuardStats { it.copy(unplannedOpenings = it.unplannedOpenings + 1) }
                             handler.post {
+                                // the answer can take 15 s: act only if that app is still in front, or Back lands in whatever you opened since
+                                if (runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull() != pkg) return@post
+                                prefs().edit().remove("guard_pass_until").apply()
+                                updateGuardStats { it.copy(unplannedOpenings = it.unplannedOpenings + 1) }
                                 performGlobalAction(GLOBAL_ACTION_BACK)
                                 val feedName = if (kind is ScreenKind.ShortForm) kind.feedName else pkg
                                 launchGuardActivity(
