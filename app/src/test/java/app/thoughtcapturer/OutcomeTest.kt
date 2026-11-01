@@ -60,4 +60,17 @@ class OutcomeTest {
         assertFalse(passing(HttpError(400, ""))) // a bad request fails the same way 30 s later
         assertFalse(passing(IOException("Not signed in to Microsoft. Open Settings to sign in.")))
     }
+
+    @Test
+    fun oversizedAudioReadsFirstCapBytesInsteadOfDroppingFile() {
+        val f = java.io.File.createTempFile("capture", ".pcm")
+        try {
+            f.writeBytes(ByteArray(100) { it.toByte() })
+            val capped = readAudioCap(f, cap = 40)!!
+            assertEquals(40, capped.size)
+            assertEquals(39.toByte(), capped.last())
+        } finally {
+            f.delete()
+        }
+    }
 }

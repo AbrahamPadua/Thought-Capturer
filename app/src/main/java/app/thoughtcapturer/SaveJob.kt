@@ -174,9 +174,12 @@ fun defaultListId(get: (String) -> JSONObject): String {
 private const val SPEECH_RULES = "The speaker has an Asian accent and may mix English, Tagalog and Spanish in one sentence. " +
     "Write every word in the language it was spoken; never translate. Where the accent makes a word ambiguous, choose the most likely word in context."
 
-// shortcut: Gemini takes about 20MB inline; past ~6 minutes of speech (long silences are trimmed out) the job sends the
-// on-screen text instead. Use the Files API if longer notes matter.
+// shortcut: Gemini takes about 20MB inline; past ~6 minutes of speech (long silences are trimmed out) only the first
+// MAX_AUDIO bytes go inline. Use the Files API if longer notes matter.
 const val MAX_AUDIO = 12_000_000L
+
+internal fun readAudioCap(file: File?, cap: Int = MAX_AUDIO.toInt()): ByteArray? =
+    file?.takeIf { it.isFile && it.length() > 0 }?.inputStream()?.use { it.readNBytes(cap) }
 
 /** The transcript Gemini returned with an audio split, or null when the split had none (typed only, or a failed call). */
 fun transcriptOf(json: String?): String? =
@@ -329,7 +332,7 @@ class SaveJob : JobService() {
     private fun save(params: JobParameters) {
         val shown = params.extras.getString("text")!! // what the screen showed: the fallback if Gemini can't help
         val typed = params.extras.getString("typed").orEmpty()
-        val audio = params.extras.getString("audio")?.let(::File)?.takeIf { it.isFile && it.length() in 1..MAX_AUDIO }
+        val audio = params.extras.getString("audio")?.let(::File)?.takeIf { it.isFile && it.length() > 0 }
         val at = params.extras.getLong("at")
         val p = prefs()
         val k = "job${params.jobId}"
@@ -368,7 +371,7 @@ class SaveJob : JobService() {
         val key = prefs().getString("gemini_key", null)
         if (key.isNullOrBlank()) return ""
         return try {
-            geminiSplit(text, at, key, audio?.readBytes()).also { prefs().edit().remove("gemini_error").apply() }
+            geminiSplit(text, at, key, readAudioCap(audio)).also { prefs().edit().remove("gemini_error").apply() }
         } catch (e: Exception) {
             prefs().edit().putString("gemini_error", e.message ?: e.toString()).apply()
             ""
