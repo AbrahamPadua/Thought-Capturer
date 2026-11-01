@@ -1,0 +1,284 @@
+package app.thoughtcapturer
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class GuardTest {
+    private val ctx = RuntimeEnvironment.getApplication()
+
+    @Test
+    fun classifiesInstagramScreens() {
+        val reelsNode = listOf(ScreenNode(viewId = "com.instagram.android:id/clips_viewer_view_pager"))
+        assertEquals(ScreenKind.ShortForm("Instagram Reels"), classifyScreen("com.instagram.android", reelsNode))
+
+        val tabNode = listOf(ScreenNode(viewId = "clips_tab", selected = true))
+        assertEquals(ScreenKind.ShortForm("Instagram Reels"), classifyScreen("com.instagram.android", tabNode))
+
+        val reelsText = listOf(ScreenNode(text = "Reels", selected = true))
+        assertEquals(ScreenKind.ShortForm("Instagram Reels"), classifyScreen("com.instagram.android", reelsText))
+
+        val dmNode = listOf(ScreenNode(viewId = "com.instagram.android:id/direct_thread_layout"))
+        assertEquals(ScreenKind.SafeSection("Instagram DMs"), classifyScreen("com.instagram.android", dmNode))
+
+        val dmSelected = listOf(ScreenNode(desc = "Direct", selected = true))
+        assertEquals(ScreenKind.SafeSection("Instagram DMs"), classifyScreen("com.instagram.android", dmSelected))
+
+        // A reel mentioned inside a DM thread must remain classified as safe DMs
+        val dmWithReel = listOf(
+            ScreenNode(viewId = "thread_title"),
+            ScreenNode(text = "Reels", selected = true),
+        )
+        assertEquals(ScreenKind.SafeSection("Instagram DMs"), classifyScreen("com.instagram.android", dmWithReel))
+
+        val feedNode = listOf(ScreenNode(viewId = "main_feed"))
+        assertEquals(ScreenKind.GuardedApp("Instagram"), classifyScreen("com.instagram.android", feedNode))
+    }
+
+    @Test
+    fun classifiesYouTubeScreens() {
+        val shortsRecycler = listOf(ScreenNode(viewId = "com.google.android.youtube:id/reel_recycler"))
+        assertEquals(ScreenKind.ShortForm("YouTube Shorts"), classifyScreen("com.google.android.youtube", shortsRecycler))
+
+        val shortsSelected = listOf(ScreenNode(text = "Shorts", selected = true))
+        assertEquals(ScreenKind.ShortForm("YouTube Shorts"), classifyScreen("com.google.android.youtube", shortsSelected))
+
+        val watchWhile = listOf(ScreenNode(viewId = "com.google.android.youtube:id/watch_while"))
+        assertEquals(ScreenKind.SafeSection("YouTube Video"), classifyScreen("com.google.android.youtube", watchWhile))
+
+        val videoTitle = listOf(ScreenNode(viewId = "com.google.android.youtube:id/video_title"))
+        assertEquals(ScreenKind.SafeSection("YouTube Video"), classifyScreen("com.google.android.youtube", videoTitle))
+
+        val homeFeed = listOf(ScreenNode(viewId = "home_feed"))
+        assertEquals(ScreenKind.GuardedApp("YouTube"), classifyScreen("com.google.android.youtube", homeFeed))
+    }
+
+    @Test
+    fun classifiesTikTokAndOtherApps() {
+        assertEquals(ScreenKind.ShortForm("TikTok"), classifyScreen("com.zhiliaoapp.musically", emptyList()))
+        assertEquals(ScreenKind.ShortForm("TikTok"), classifyScreen("com.ss.android.ugc.trill", emptyList()))
+        assertEquals(ScreenKind.Other, classifyScreen("com.android.settings", emptyList()))
+    }
+
+    @Test
+    fun extractsRedactedHeadersWithoutPrivateData() {
+        val nodes = listOf(
+            ScreenNode(text = "Sensitive chat body", viewId = "direct_message_text"),
+            ScreenNode(text = "Comment text", viewId = "comment_input"),
+            ScreenNode(text = "Secret password", password = true),
+            ScreenNode(text = "Drafting text", editable = true),
+            ScreenNode(text = "hi"), // Under 3 chars
+            ScreenNode(text = "Email Prof. Miller at miller@ucsd.edu today"),
+            ScreenNode(text = "Call lab phone at (858) 534-2230 for pickup"),
+            ScreenNode(text = "Email Prof. Miller at miller@ucsd.edu today"), // Duplicate
+            ScreenNode(text = "Course announcements and weekly reading schedule"),
+        )
+        val headers = extractRedactedHeaders(nodes, maxLines = 5)
+        assertEquals(
+            listOf(
+                "Email Prof. Miller at [redacted] today",
+                "Call lab phone at [redacted] for pickup",
+                "Course announcements and weekly reading schedule",
+            ),
+            headers,
+        )
+    }
+
+    @Test
+    fun verifiesPurposeLocally() {
+        val reelsKind = ScreenKind.ShortForm("Instagram Reels")
+        val shortResult = verifyPurposeLocal("study math", "com.instagram.android", reelsKind, emptyList())
+        assertTrue(shortResult is PurposeMatch.Mismatch)
+        assertEquals("Instagram Reels is blocked during an important-use pass.", (shortResult as PurposeMatch.Mismatch).reason)
+
+        val dmKind = ScreenKind.SafeSection("Instagram DMs")
+        val dmMatch = verifyPurposeLocal("dm alice about math hw", "com.instagram.android", dmKind, emptyList())
+        assertEquals(PurposeMatch.Match, dmMatch)
+
+        val loadingResult = verifyPurposeLocal("research algorithms", "com.google.android.youtube", ScreenKind.SafeSection("YouTube Video"), emptyList())
+        assertEquals(PurposeMatch.Match, loadingResult)
+
+        val matchNodes = listOf(ScreenNode(text = "CSE 100 Lecture 4: Balanced Search Trees"))
+        val matchResult = verifyPurposeLocal("watch cse 100 lecture", "com.google.android.youtube", ScreenKind.SafeSection("YouTube Video"), matchNodes)
+        assertEquals(PurposeMatch.Match, matchResult)
+
+        val unrelatedNodes = listOf(ScreenNode(text = "Top 10 Hilarious Cat Compilation 2026"))
+        val uncertainResult = verifyPurposeLocal("study cse 100", "com.google.android.youtube", ScreenKind.SafeSection("YouTube Video"), unrelatedNodes)
+        assertTrue(uncertainResult is PurposeMatch.Uncertain)
+        assertEquals(listOf("Top 10 Hilarious Cat Compilation 2026"), (uncertainResult as PurposeMatch.Uncertain).headers)
+    }
+
+    @Test
+    fun verifiesPurposeGeminiFailsOpen() {
+        assertTrue(verifyPurposeGemini("study", emptyList(), "key"))
+        assertTrue(verifyPurposeGemini("study", listOf("header"), ""))
+
+        // Network error fails open
+        val failsOpen = verifyPurposeGemini("study", listOf("header"), "key") { _, _, _ ->
+            throw java.io.IOException("Network timeout")
+        }
+        assertTrue(failsOpen)
+
+        // Semantic match
+        val matched = verifyPurposeGemini("study", listOf("header"), "key") { _, _, _ ->
+            """{"matches":true}"""
+        }
+        assertTrue(matched)
+
+        // Semantic mismatch
+        val rejected = verifyPurposeGemini("study", listOf("header"), "key") { _, _, _ ->
+            """{"matches":false}"""
+        }
+        assertFalse(rejected)
+    }
+
+    @Test
+    fun detectsFocusEventTitlesAndCourseCodes() {
+        assertTrue(isFocusEventTitle("CSE 100 Lecture"))
+        assertTrue(isFocusEventTitle("MATH 170A Discussion"))
+        assertTrue(isFocusEventTitle("COGS 108 Project Sync"))
+        assertTrue(isFocusEventTitle("Study for midterm"))
+        assertTrue(isFocusEventTitle("Homework session", "Working on lab 3"))
+        assertFalse(isFocusEventTitle("Dentist appointment"))
+        assertFalse(isFocusEventTitle("Lunch with Alex"))
+    }
+
+    @Test
+    fun selectsFocusBlockWithPriority() {
+        val calendarEvents = listOf(FocusBlock("COGS 108", null, 1000L))
+        val selected = selectFocusBlock(calendarEvents, "Write proof", listOf("Do quiz"))
+        assertEquals(FocusBlock("COGS 108", "Write proof", 1000L), selected)
+
+        val withExistingAction = listOf(FocusBlock("COGS 108", "Finish draft", 1000L))
+        assertEquals(FocusBlock("COGS 108", "Finish draft", 1000L), selectFocusBlock(withExistingAction, "Write proof"))
+
+        val fromManual = selectFocusBlock(emptyList(), "Finish report", listOf("Fallback item"))
+        assertEquals(FocusBlock("Finish report", "Fallback item"), fromManual)
+
+        assertNull(selectFocusBlock(emptyList(), "", listOf("Fallback item")))
+    }
+
+    @Test
+    fun evaluatesGuardPolicy() {
+        val baseConfig = GuardConfig(stage = EvalStage.BASELINE)
+        val stats = GuardStats("2026-11-01", shortFormSec = 0)
+        val shortKind = ScreenKind.ShortForm("Instagram Reels")
+
+        // Baseline stage allows everything
+        assertEquals(GuardAction.Allow, evaluateGuard(baseConfig, shortKind, emptyList(), "com.instagram.android", null, stats, 100L, 0L, "", 0L, 0))
+
+        // Other kind allows
+        val returnConfig = GuardConfig(stage = EvalStage.GUARD_RETURN)
+        assertEquals(GuardAction.Allow, evaluateGuard(returnConfig, ScreenKind.Other, emptyList(), "pkg", null, stats, 100L, 0L, "", 0L, 0))
+
+        // Safe section allows
+        assertEquals(GuardAction.Allow, evaluateGuard(returnConfig, ScreenKind.SafeSection("DMs"), emptyList(), "pkg", null, stats, 100L, 0L, "", 0L, 0))
+
+        // Focus block interrupts short-form
+        val focus = FocusBlock("COGS 108")
+        val focusInterrupt = evaluateGuard(returnConfig, shortKind, emptyList(), "com.instagram.android", focus, stats, 100L, 0L, "", 0L, 0)
+        assertTrue(focusInterrupt is GuardAction.Interrupt)
+        val fi = focusInterrupt as GuardAction.Interrupt
+        assertEquals("Blocked during COGS 108.", fi.reason)
+        assertEquals(focus, fi.focus)
+        assertTrue(fi.allowPurposePass)
+        assertFalse(fi.allowLeisureBreak)
+
+        // Outside focus block: leisure allowed
+        val leisureAllow = evaluateGuard(returnConfig, shortKind, emptyList(), "com.instagram.android", null, stats, 100L, 0L, "", 200L, 2)
+        assertEquals(GuardAction.Allow, leisureAllow)
+
+        // Video limit reached interrupts
+        val limitInterrupt = evaluateGuard(returnConfig, shortKind, emptyList(), "com.instagram.android", null, stats, 100L, 0L, "", 200L, 5)
+        assertTrue(limitInterrupt is GuardAction.Interrupt)
+        assertEquals("Reached 5 consecutive short videos.", (limitInterrupt as GuardAction.Interrupt).reason)
+
+        // Budget depleted interrupts
+        val usedStats = GuardStats("2026-11-01", shortFormSec = 15 * 60)
+        val budgetInterrupt = evaluateGuard(returnConfig, shortKind, emptyList(), "com.instagram.android", null, usedStats, 100L, 0L, "", 200L, 0)
+        assertTrue(budgetInterrupt is GuardAction.Interrupt)
+        assertEquals("Daily 15m short-form allowance used.", (budgetInterrupt as GuardAction.Interrupt).reason)
+
+        // Accountability consequences trigger after threshold
+        val acctConfig = GuardConfig(stage = EvalStage.GUARD_ACCOUNTABILITY, accountabilityMode = AccountabilityMode.CONSEQUENCE, violationThreshold = 2)
+        val overrideStats = GuardStats("2026-11-01", overrides = 1)
+        val acctInterrupt = evaluateGuard(acctConfig, shortKind, emptyList(), "com.instagram.android", focus, overrideStats, 100L, 0L, "", 0L, 0) as GuardAction.Interrupt
+        assertTrue(acctInterrupt.triggerCountdown)
+        assertFalse(acctInterrupt.sendSupportiveNotice)
+
+        // Active pass check Gemini when uncertain
+        val passNodes = listOf(ScreenNode(text = "Unrelated cooking video"))
+        val geminiCheck = evaluateGuard(returnConfig, ScreenKind.SafeSection("YouTube Video"), passNodes, "com.google.android.youtube", null, stats, 100L, 500L, "cse 100", 0L, 0)
+        assertTrue(geminiCheck is GuardAction.CheckGemini)
+    }
+
+    @Test
+    fun shouldNotifyPartnerEnforcesCooldownAndThreshold() {
+        assertFalse(shouldNotifyPartner(EvalStage.GUARD_RETURN, AccountabilityMode.SUPPORTIVE, 3, 2, 0L, 1000L))
+        assertFalse(shouldNotifyPartner(EvalStage.GUARD_ACCOUNTABILITY, AccountabilityMode.OFF, 3, 2, 0L, 1000L))
+        assertFalse(shouldNotifyPartner(EvalStage.GUARD_ACCOUNTABILITY, AccountabilityMode.SUPPORTIVE, 1, 2, 0L, 1000L))
+
+        // First notification
+        assertTrue(shouldNotifyPartner(EvalStage.GUARD_ACCOUNTABILITY, AccountabilityMode.SUPPORTIVE, 2, 2, 0L, 1000L))
+
+        // Too soon (less than 2 hours)
+        val twoHours = 2 * 3600_000L
+        assertFalse(shouldNotifyPartner(EvalStage.GUARD_ACCOUNTABILITY, AccountabilityMode.SUPPORTIVE, 2, 2, 1000L, 1000L + twoHours - 1000L))
+
+        // Cooldown passed
+        assertTrue(shouldNotifyPartner(EvalStage.GUARD_ACCOUNTABILITY, AccountabilityMode.SUPPORTIVE, 2, 2, 1000L, 1000L + twoHours))
+    }
+
+    @Test
+    fun accountabilityMessagesAreCleanAndNonShaming() {
+        val supportive = accountabilityMessage(AccountabilityMode.SUPPORTIVE, "MATH 170A")
+        assertTrue(supportive.contains("MATH 170A"))
+        assertFalse(supportive.contains("\u2014"))
+
+        val consequence = accountabilityMessage(AccountabilityMode.CONSEQUENCE, null)
+        assertTrue(consequence.contains("countdown"))
+        assertFalse(consequence.contains("\u2014"))
+
+        assertEquals("", accountabilityMessage(AccountabilityMode.OFF, null))
+    }
+
+    @Test
+    fun savesAndLoadsGuardConfigAndStats() {
+        val cfg = GuardConfig(
+            stage = EvalStage.GUARD_ACCOUNTABILITY,
+            accountabilityMode = AccountabilityMode.CONSEQUENCE,
+            leisureBudgetMin = 20,
+            openingDelaySec = 15,
+            videoLimit = 8,
+            violationThreshold = 3,
+            focusTask = "Write thesis",
+            partnerTarget = "partner@example.com",
+            useGeminiVerify = false,
+        )
+        ctx.saveGuardConfig(cfg)
+        assertEquals(cfg, ctx.guardConfig())
+
+        val day = "2026-11-01"
+        assertEquals(0, ctx.guardStats(day).shortFormSec)
+        ctx.updateGuardStats(day) { it.copy(shortFormSec = 120, overrides = 2) }
+        val updated = ctx.guardStats(day)
+        assertEquals(120, updated.shortFormSec)
+        assertEquals(2, updated.overrides)
+
+        val summary = updated.summaryText(cfg)
+        assertTrue(summary.contains("2 / 20m leisure"))
+        assertTrue(summary.contains("2 overrides"))
+        assertFalse(summary.contains("\u2014"))
+
+        assertFalse(sendAccountabilityNotice(ctx, "", "test"))
+        assertFalse(sendAccountabilityNotice(ctx, "   ", "test"))
+    }
+}
