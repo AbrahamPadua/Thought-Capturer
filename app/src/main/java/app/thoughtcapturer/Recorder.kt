@@ -71,6 +71,7 @@ class Recorder(
     val file: File,
     private val onLevel: (Float) -> Unit,
     private val onSentence: (ByteArray) -> Unit,
+    private val onMicLost: () -> Unit,
 ) {
     private val pipe = ParcelFileDescriptor.createPipe()
 
@@ -99,7 +100,13 @@ class Recorder(
             FileOutputStream(file, true).buffered().use { out ->
                 while (running) {
                     val n = rec.read(samples, 0, CHUNK)
-                    if (n <= 0) continue
+                    if (n < 0) { // an error code (say the audio service restarted): every later read fails too, so stop instead of spinning
+                        Log.e("Capture", "microphone read failed: $n")
+                        running = false
+                        onMicLost()
+                        break
+                    }
+                    if (n == 0) continue
                     for (i in 0 until n) {
                         bytes[2 * i] = samples[i].toByte()
                         bytes[2 * i + 1] = (samples[i].toInt() shr 8).toByte()

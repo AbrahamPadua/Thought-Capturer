@@ -155,6 +155,15 @@ class CaptureActivity : Activity(), RecognitionListener {
             File(filesDir, "captures/${System.currentTimeMillis()}.pcm"),
             onLevel = { level -> runOnUiThread { plot.setLevel(level) } },
             onSentence = { pcm -> runOnUiThread { sentenceEnded(pcm) } },
+            onMicLost = {
+                runOnUiThread {
+                    // what was recorded before the failure is still in the file, so Done keeps it
+                    micError = true
+                    plot.listening = false
+                    strip.showStatus(status(micError = true))
+                    show("The microphone stopped. Tap Done to keep what you said.")
+                }
+            },
         )
         try {
             r.start()
