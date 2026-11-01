@@ -8,6 +8,10 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlin.concurrent.thread
 
+// A longer gap between events means the screen was locked (lock screen events are skipped) or the phone sat unused.
+// shortcut: a Reel watched untouched for over 10 s counts as 10 s; if totals run low, flush on screen-off instead.
+private const val MAX_TICK_SEC = 10
+
 /**
  * Accessibility service detecting short-form feeds (Reels, Shorts, etc.) during focus sessions.
  * Debounces content updates to conserve battery, extracts visible nodes, and evaluates guard rules.
@@ -185,7 +189,7 @@ class GuardService : AccessibilityService() {
             } else {
                 val elapsedSec = ((nowMs - lastShortFormTickMs) / 1000).toInt()
                 if (elapsedSec >= 1) {
-                    updateGuardStats { it.copy(shortFormSec = it.shortFormSec + elapsedSec) }
+                    updateGuardStats { it.copy(shortFormSec = it.shortFormSec + minOf(elapsedSec, MAX_TICK_SEC)) }
                     lastShortFormTickMs = nowMs
                 }
             }
@@ -207,7 +211,7 @@ class GuardService : AccessibilityService() {
         if (wasInShortForm && lastShortFormTickMs > 0L) {
             val elapsedSec = ((now - lastShortFormTickMs) / 1000).toInt()
             if (elapsedSec > 0) {
-                updateGuardStats { it.copy(shortFormSec = it.shortFormSec + elapsedSec) }
+                updateGuardStats { it.copy(shortFormSec = it.shortFormSec + minOf(elapsedSec, MAX_TICK_SEC)) }
                 lastShortFormTickMs = now
             }
         }

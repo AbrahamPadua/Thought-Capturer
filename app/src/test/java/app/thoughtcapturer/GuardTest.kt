@@ -405,4 +405,15 @@ class GuardTest {
         assertTrue(isServiceInEnabledList("app.thoughtcapturer/.GuardService", "app.thoughtcapturer"))
         assertFalse(isServiceInEnabledList("app.thoughtcapturer.other/.GuardService", "app.thoughtcapturer"))
     }
+
+    @Test
+    fun lockedScreenTimeIsNotCountedAsWatching() {
+        val svc = org.robolectric.Robolectric.setupService(GuardService::class.java)
+        val content = android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        svc.trackShortForm(true, content, 0L)
+        svc.trackShortForm(true, content, 2 * 3600_000L) // unlocked two hours later, still on the same Reel
+        assertEquals(10, svc.guardStats().shortFormSec)
+        svc.trackShortForm(false, content, 4 * 3600_000L) // the same gap right before leaving
+        assertEquals(20, svc.guardStats().shortFormSec)
+    }
 }
