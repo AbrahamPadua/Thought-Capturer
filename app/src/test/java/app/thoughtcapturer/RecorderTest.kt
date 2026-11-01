@@ -49,15 +49,6 @@ class RecorderTest {
     }
 
     @Test
-    fun roughWordsAlreadyGivenToASentenceAreNotShownAgain() {
-        assertEquals("you doing", dropWords("hello how are you doing", "hello how are"))
-        // the recognizer revised an earlier word: still drop by count
-        assertEquals("you doing", dropWords("hello who are you doing", "hello how are"))
-        assertEquals("hello there", dropWords("hello there", ""))
-        assertEquals("", dropWords("hi", "hi there friend"))
-    }
-
-    @Test
     fun longTranscriptsKeepTheNewestWords() {
         assertEquals("short", tail("short", 90))
         val t = tail("one two three four five six seven", 15)

@@ -32,12 +32,6 @@ private const val LISTENING = "Listening. Tap Done when you're finished."
 private const val LISTENING_NO_KEY = "Listening. Add a Gemini key in Settings for accurate words."
 private const val TYPING = "Typing. It's still listening."
 
-/** Drops the first words of [text] that [prefix] already accounted for (by count, so a revised word doesn't break it). */
-internal fun dropWords(text: String, prefix: String): String {
-    val n = prefix.split(' ').count { it.isNotBlank() }
-    return text.split(' ').filter { it.isNotBlank() }.drop(n).joinToString(" ")
-}
-
 /** The last [max] characters, cut at a word and marked, so the newest words always show. */
 internal fun tail(text: String, max: Int): String {
     if (text.length <= max) return text
@@ -65,10 +59,7 @@ class CaptureActivity : Activity(), RecognitionListener {
     private var recognizer: SpeechRecognizer? = null
     private val corrector = Executors.newSingleThreadExecutor()
     private val sentences = mutableListOf<Sentence>()
-    private var live = "" // rough words of the sentence being spoken
-    private var carry = "" // rough words from a finished recognizer segment that belong to the current sentence
-    private var latestRaw = "" // the recognizer's latest cumulative partial within its own segment
-    private var usedRaw = "" // the part of that partial already given to finished sentences
+    private val roughWords = RoughWords()
     private var closing = false
     private var askingPermission = false
     private var micError = false
@@ -241,7 +232,8 @@ class CaptureActivity : Activity(), RecognitionListener {
         said.text = if (text.length > max) tail(text.toString(), max) else text
         said.visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
         // the prompt is gray text, not a hint: auto-sizing (cover screen) lays a hint out one letter per line, "S" / "t".
-        // Saving reads `live`, never this view, so the prompt can't end up in a capture.
+        // Saving reads roughWords, never this view, so the prompt can't end up in a capture.
+        val live = roughWords.live
         val prompt = sentences.isEmpty() && live.isEmpty() && !typed.hasFocus()
         now.text = if (prompt) "Start talking" else live
         now.setTextColor(getColor(if (prompt) R.color.ink_muted else R.color.ink_line))
@@ -249,17 +241,21 @@ class CaptureActivity : Activity(), RecognitionListener {
 
     private fun sentenceEnded(pcm: ByteArray) {
         if (closing) return
-        val s = Sentence(rough = live)
+        val s = Sentence(rough = roughWords.cut())
         sentences += s
-        usedRaw = latestRaw // the recognizer's words so far in its current segment now belong to this sentence
-        carry = ""
-        live = ""
         plot.freeze()
         render()
         val k = key ?: return
         corrector.execute {
             runCatching { geminiTranscribe(pcm, k) }
-                .onSuccess { exact -> runOnUiThread { s.exact = exact; render() } }
+                .onSuccess { exact ->
+                    runOnUiThread {
+                        s.exact = exact
+                        // only the latest sentence can have spilled late words onto the live line
+                        if (s === sentences.last()) roughWords.corrected(exact)
+                        render()
+                    }
+                }
                 .onFailure { Log.w("Capture", "live correction failed: ${it.message}") } // rough stays; the job transcribes anyway
         }
     }
@@ -267,18 +263,12 @@ class CaptureActivity : Activity(), RecognitionListener {
     private fun best(b: Bundle?) = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
 
     override fun onPartialResults(b: Bundle?) {
-        val raw = best(b) ?: return
-        latestRaw = raw
-        live = listOf(carry, dropWords(raw, usedRaw)).filter(String::isNotBlank).joinToString(" ")
+        roughWords.partial(best(b) ?: return)
         render()
     }
 
     override fun onSegmentResults(b: Bundle) {
-        val raw = best(b) ?: ""
-        carry = listOf(carry, dropWords(raw, usedRaw)).filter(String::isNotBlank).joinToString(" ")
-        usedRaw = ""
-        latestRaw = ""
-        live = carry
+        roughWords.segment(best(b) ?: "")
         render()
     }
 
@@ -313,7 +303,7 @@ class CaptureActivity : Activity(), RecognitionListener {
         closing = true
         stopListening()
         // include words still being heard: tapping Done mid-sentence must not drop them
-        val spoken = (sentences.map { it.exact ?: it.rough } + live).filter(String::isNotBlank).joinToString(" ")
+        val spoken = (sentences.map { it.exact ?: it.rough } + roughWords.live).filter(String::isNotBlank).joinToString(" ")
         val words = typed.text.toString().trim()
         val shown = listOf(spoken, words).filter(String::isNotBlank).joinToString("\n\n")
         // without a key the recording can't be transcribed, so only what was shown is worth sending
