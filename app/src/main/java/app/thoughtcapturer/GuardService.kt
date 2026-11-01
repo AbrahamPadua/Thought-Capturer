@@ -28,12 +28,14 @@ class GuardService : AccessibilityService() {
         val pkg = event.packageName?.toString().orEmpty()
 
         if (!isGuardedPackage(pkg)) {
-            pendingCheck?.let { handler.removeCallbacks(it) }
-            pendingCheck = null
-            flushShortFormTime()
-            wasInShortForm = false
-            consecVideos = 0
-            lastScrollCountMs = 0L
+            if (shouldResetOnNonGuardedEvent(pkg, event.eventType)) {
+                pendingCheck?.let { handler.removeCallbacks(it) }
+                pendingCheck = null
+                flushShortFormTime()
+                wasInShortForm = false
+                consecVideos = 0
+                lastScrollCountMs = 0L
+            }
             return
         }
 
@@ -158,6 +160,12 @@ class GuardService : AccessibilityService() {
             }
         }
         return list
+    }
+
+    internal fun shouldResetOnNonGuardedEvent(pkg: String, eventType: Int): Boolean {
+        if (eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return false
+        val p = pkg.lowercase()
+        return p.isNotEmpty() && p != "com.android.systemui" && !p.contains("inputmethod") && !p.contains("honeyboard")
     }
 
     internal fun trackShortForm(isShort: Boolean, eventType: Int, nowMs: Long): Boolean {

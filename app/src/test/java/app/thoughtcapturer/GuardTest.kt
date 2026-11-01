@@ -369,5 +369,12 @@ class GuardTest {
         assertFalse(svc.trackShortForm(false, content, 15_000L))
         assertEquals(0, svc.consecVideos)
         assertEquals(5, svc.guardStats().shortFormSec)
+
+        // Notifications and keyboard events do not reset short-form streak; foreground app switches do
+        val winState = android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+        assertFalse(svc.shouldResetOnNonGuardedEvent("com.android.systemui", winState))
+        assertFalse(svc.shouldResetOnNonGuardedEvent("com.samsung.android.honeyboard", winState))
+        assertFalse(svc.shouldResetOnNonGuardedEvent("com.android.chrome", content))
+        assertTrue(svc.shouldResetOnNonGuardedEvent("com.android.chrome", winState))
     }
 }
