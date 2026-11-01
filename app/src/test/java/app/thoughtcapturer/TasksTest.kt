@@ -71,6 +71,27 @@ class TasksTest {
     }
 
     @Test
+    fun keepsStepsAndParksMaybesInTheNote() {
+        val split = parseSplit(
+            """{"tasks":[{"title":"Write lit review","steps":["Check outcome measures"," ","Reorganize sources"]}],""" +
+                """"later":["Maybe ask Dr. K about EEG"]}""",
+            "raw",
+        )
+        assertEquals(listOf("Check outcome measures", "Reorganize sources"), split.tasks.single().steps)
+        assertEquals(Note("Later", emptyList(), listOf("Maybe ask Dr. K about EEG")), split.note) // a page even with no other note
+        val html = noteHtml(split.note!!, "raw", 0)
+        assertTrue(html, "<p><b>Later</b></p><ul><li>Maybe ask Dr. K about EEG</li></ul>" in html)
+        assertFalse(html, "<ul></ul>" in html)
+    }
+
+    @Test
+    fun uploadsEachTaskThenItsStepsThenThePage() {
+        val split = Split(listOf(Task("a", null, steps = listOf("a1", "a2")), Task("b", null)), Note("n", listOf("x")))
+        assertEquals(listOf(Upload.ToDo(0), Upload.Step(0, 0), Upload.Step(0, 1), Upload.ToDo(1), Upload.Page), uploads(split))
+        assertEquals(listOf(Upload.ToDo(0)), uploads(Split(listOf(Task("a", null)), null)))
+    }
+
+    @Test
     fun noteHtmlEscapesSpeech() {
         val html = noteHtml(Note("a < b", listOf("x & y")), "say \"hi\" <3", 0)
         assertTrue(html, "<title>a &lt; b</title>" in html)

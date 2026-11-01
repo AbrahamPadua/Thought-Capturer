@@ -36,12 +36,18 @@ const val GEMINI_MODEL = "gemini-flash-latest"
 
 fun Context.prefs(): SharedPreferences = getSharedPreferences("capture", Context.MODE_PRIVATE)
 
-/** [remind] is a local time, yyyy-MM-ddTHH:mm:ss, when To Do should alert; [important] stars the task. */
-data class Task(val title: String, val due: String?, val remind: String? = null, val important: Boolean = false)
-data class Note(val title: String, val points: List<String>)
+/**
+ * [remind] is a local time, yyyy-MM-ddTHH:mm:ss, when To Do should alert; [important] stars the task; [steps] are its
+ * To Do checklist, the logistics said around it.
+ */
+data class Task(val title: String, val due: String?, val remind: String? = null, val important: Boolean = false, val steps: List<String> = emptyList())
+/** [later]: things said as maybes ("maybe I should..."), parked here instead of becoming tasks. */
+data class Note(val title: String, val points: List<String>, val later: List<String> = emptyList())
 data class Split(val tasks: List<Task>, val note: Note?)
 
 private val REMINDER_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+
+private fun strings(a: JSONArray?) = (0 until (a?.length() ?: 0)).map { a!!.optString(it).trim() }.filter { it.isNotEmpty() }
 
 /** Gemini's JSON to tasks and an optional note. Anything unusable falls back to the raw capture as one task. */
 fun parseSplit(json: String?, raw: String): Split {
@@ -56,24 +62,41 @@ fun parseSplit(json: String?, raw: String): Split {
                     it.optString("due").takeIf { d -> runCatching { LocalDate.parse(d) }.isSuccess },
                     runCatching { LocalDateTime.parse(it.optString("remind")).format(REMINDER_TIME) }.getOrNull(),
                     it.optBoolean("important"),
+                    strings(it.optJSONArray("steps")),
                 )
             }
             .filter { it.title.isNotEmpty() }
         val n = o.optJSONObject("note")
-        val points = n?.optJSONArray("points")?.let { p -> (0 until p.length()).map { p.optString(it).trim() } }.orEmpty().filter { it.isNotEmpty() }
-        Split(tasks, n?.takeIf { points.isNotEmpty() }?.let { Note(it.optString("title").trim().ifEmpty { "Capture" }, points) })
+        val points = strings(n?.optJSONArray("points"))
+        val later = strings(o.optJSONArray("later"))
+        val title = n?.optString("title")?.trim().orEmpty().ifEmpty { if (points.isEmpty()) "Later" else "Capture" }
+        Split(tasks, if (points.isEmpty() && later.isEmpty()) null else Note(title, points, later))
     }.getOrNull()
     val split = parsed?.takeIf { it.tasks.isNotEmpty() || it.note != null } ?: Split(listOf(Task(raw, null)), null)
     // To Do caps titles at 255 chars; the full capture also goes in the task note
-    return split.copy(tasks = split.tasks.map { it.copy(title = it.title.take(255)) })
+    return split.copy(tasks = split.tasks.map { it.copy(title = it.title.take(255), steps = it.steps.map { s -> s.take(255) }) })
 }
+
+/** One Graph call of a capture's upload. */
+sealed interface Upload {
+    data class ToDo(val task: Int) : Upload
+    data class Step(val task: Int, val step: Int) : Upload
+    data object Page : Upload
+}
+
+/** Every call a split needs, in order: each task and then its steps, then the OneNote page. */
+fun uploads(split: Split): List<Upload> =
+    split.tasks.flatMapIndexed { i, t -> listOf(Upload.ToDo(i)) + t.steps.indices.map { Upload.Step(i, it) } } +
+        listOfNotNull(Upload.Page.takeIf { split.note != null })
 
 /** The OneNote page. Everything is escaped: a stray "<" or "&" in speech would get the page rejected and stall the upload. */
 fun noteHtml(note: Note, raw: String, at: Long): String {
     fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+    fun list(items: List<String>) = if (items.isEmpty()) "" else "<ul>${items.joinToString("") { "<li>${esc(it)}</li>" }}</ul>"
     val created = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(Date(at)) // the time you said it, not the upload time
     return "<!DOCTYPE html><html><head><title>${esc(note.title)}</title><meta name=\"created\" content=\"$created\" /></head><body>" +
-        "<ul>${note.points.joinToString("") { "<li>${esc(it)}</li>" }}</ul><p><i>What you said:</i> ${esc(raw)}</p></body></html>"
+        list(note.points) + (if (note.later.isEmpty()) "" else "<p><b>Later</b></p>" + list(note.later)) +
+        "<p><i>What you said:</i> ${esc(raw)}</p></body></html>"
 }
 
 /** The To Do task to create. [tz] is a Windows zone name; [raw] goes in the body unless it's the title already. */
@@ -193,6 +216,8 @@ fun geminiSplit(text: String, at: Long, key: String, pcm: ByteArray? = null): St
         It is $now. Sort this voice note into to-do tasks and a note.
         - tasks: things the speaker needs to do, one per separate action. title: short, starts with a verb, keeps their own words and names. due: YYYY-MM-DD, only when they gave or implied a date ("by Friday", "tomorrow"); otherwise leave it out.
           remind: YYYY-MM-DDTHH:MM, only when they asked to be reminded or named a time of day ("at 4", "tonight at 7", "in two hours"): the next such time after now. important: true only when they called it urgent or important.
+          steps: when some of what they said is only preparation for one bigger task (setting up, checking things first), make that one task and list those as its steps, in order and in their own words. Never add a step they didn't say.
+        - later: things they might do or want to look into but didn't commit to ("maybe I should", "I wonder if", "what if"), one short line each in their own words. These are not tasks.
         - note: everything else worth keeping, like details, ideas, explanations and thinking out loud. title: a few words naming the topic. points: that content as short, clear bullet points in a sensible order, keeping every detail and the speaker's wording. Add no facts they didn't say.
         - If it is all to-dos, leave out the note. If it is all rambling, return an empty tasks list.
         - Keep every word in the language it was said.
@@ -201,7 +226,8 @@ fun geminiSplit(text: String, at: Long, key: String, pcm: ByteArray? = null): St
     val schema = JSONObject(
         """{"type":"OBJECT","properties":{""" +
             """"transcript":{"type":"STRING"},""" +
-            """"tasks":{"type":"ARRAY","items":{"type":"OBJECT","properties":{"title":{"type":"STRING"},"due":{"type":"STRING"},"remind":{"type":"STRING"},"important":{"type":"BOOLEAN"}},"required":["title"]}},""" +
+            """"tasks":{"type":"ARRAY","items":{"type":"OBJECT","properties":{"title":{"type":"STRING"},"due":{"type":"STRING"},"remind":{"type":"STRING"},"important":{"type":"BOOLEAN"},"steps":{"type":"ARRAY","items":{"type":"STRING"}}},"required":["title"]}},""" +
+            """"later":{"type":"ARRAY","items":{"type":"STRING"}},""" +
             """"note":{"type":"OBJECT","properties":{"title":{"type":"STRING"},"points":{"type":"ARRAY","items":{"type":"STRING"}}},"required":["title","points"]}""" +
             """},"required":["tasks"]}"""
     )
@@ -276,25 +302,31 @@ class SaveJob : JobService() {
         }
         // cache the split so a retry after a partial upload doesn't ask Gemini again and get a different split
         if (cached == null) p.edit().putString("${k}_split", split).commit()
-        val (tasks, note) = parseSplit(split, raw)
+        val parsed = parseSplit(split, raw)
+        val (tasks, note) = parsed
         val token = accessToken(this)
         val auth = mapOf("Authorization" to "Bearer $token")
         val listId by lazy { defaultListId { http(it, headers = auth) } } // a note-only capture never needs it
         // Graph wants Windows zone names ("Pacific Standard Time"), same as canvas-todo-sync sends
         val tz = android.icu.util.TimeZone.getWindowsID(java.util.TimeZone.getDefault().id) ?: "UTC"
-        // tasks first, then the note; the done counter lets a retry resume after the last upload that landed
-        for (i in p.getInt("${k}_done", 0) until tasks.size + (if (note == null) 0 else 1)) {
-            if (i < tasks.size) {
-                http("$TODO_LISTS/$listId/tasks", taskJson(tasks[i], raw, tz).toString(), headers = auth)
-            } else {
-                http(ONENOTE_PAGES, noteHtml(note!!, raw, at), "text/html", auth)
+        // the done counter lets a retry resume after the last upload that landed
+        val todo = uploads(parsed)
+        for (u in p.getInt("${k}_done", 0) until todo.size) {
+            val e = p.edit().putInt("${k}_done", u + 1)
+            when (val up = todo[u]) {
+                // the new task's id is saved with the counter, so its steps find it even after a retry
+                is Upload.ToDo -> e.putString("${k}_task${up.task}",
+                    http("$TODO_LISTS/$listId/tasks", taskJson(tasks[up.task], raw, tz).toString(), headers = auth).getString("id"))
+                is Upload.Step -> http("$TODO_LISTS/$listId/tasks/${p.getString("${k}_task${up.task}", null)}/checklistItems",
+                    JSONObject().put("displayName", tasks[up.task].steps[up.step]).toString(), headers = auth)
+                Upload.Page -> http(ONENOTE_PAGES, noteHtml(note!!, raw, at), "text/html", auth)
             }
             // shortcut: a POST that lands but whose reply is lost gets sent again on retry (rare duplicate, never a lost capture)
-            p.edit().putInt("${k}_done", i + 1).commit()
+            e.commit()
         }
-        p.edit().remove("${k}_split").remove("${k}_done").remove("${k}_tries").remove("last_error")
-            .putString("last_filed", "${tasks.size} ${if (note == null) 0 else 1}") // read by the code strip (Codes.kt)
-            .apply()
+        val done = p.edit().remove("${k}_split").remove("${k}_done").remove("${k}_tries").remove("last_error")
+        tasks.indices.forEach { done.remove("${k}_task$it") }
+        done.putString("last_filed", "${tasks.size} ${if (note == null) 0 else 1}").apply() // read by the code strip (Codes.kt)
         params.extras.getString("audio")?.let { File(it).delete() } // filed: the recording has done its job
     }
 
