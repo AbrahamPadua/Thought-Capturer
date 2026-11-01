@@ -33,6 +33,23 @@ The key also makes your words accurate: Gemini transcribes the recording itself,
 
 Tap the icon and say "email professor about the lab report by Friday. Also, for the vest I'm thinking 32 motors at 40 hertz." Tap **Done**. The to-do shows up in To Do a few seconds later, and a note about the vest shows up in OneNote under **Capture**. Both keep the full text of what you said.
 
+## What it picks up on
+
+Say a time ("remind me at 4 to call mom") and the task gets a To Do reminder, so the To Do app alerts you then. Call something urgent or important and the task is starred.
+
+Things you say as maybes, like "maybe I should ask Dr. K about EEG", go to a Later list on the OneNote note and on the sticky note. They stay out of To Do until you decide to do them.
+
+When you list what you'd have to do before a bigger task, those become steps inside that task, in your own words. Capture doesn't add steps you didn't say.
+
+## The sticky note
+
+The Capture sticky note is a widget for the home screen or the cover screen. Later lines sit at the top and recent notes below them, newest first, and you scroll for more. Tap the check next to an item to clear it from the widget; the OneNote page stays. Tap the item itself to open its page in OneNote.
+
+- Home screen: long-press an empty spot, tap Widgets, find Capture and add Capture sticky note.
+- Cover screen: Settings → Cover screen → Widgets, then turn on Capture sticky note.
+
+An item appears once its capture is filed, so anything still waiting in the queue isn't there yet. The widget keeps the newest 30 Later lines and the newest 30 notes.
+
 ## Make it one tap from anywhere on the Flip
 
 - Home screen: long-press the Capture icon and drag it to the home screen or dock.
@@ -43,9 +60,10 @@ Tap the icon and say "email professor about the lab report by Friday. Also, for 
 
 | You do | It does |
 |---|---|
+| Open Capture | Buzzes once when the mic is on, so you can start talking without looking |
 | Talk, pause, keep talking | Keeps recording without a break. Rough words show large as you talk; after each pause the sentence moves up into the gray text and freezes into a new line in the plot. Italic means it's still Android's rough guess; it turns upright when Gemini's exact words replace it |
-| Go quiet | Keeps listening. Only you stop it |
-| Tap **Done** (the white circle) | Saves; the lines fold into one and it closes |
+| Go quiet | Keeps listening. Only you stop it. Long pauses are left out of the recording, so a capture left open on the desk still gets transcribed |
+| Tap **Done** (the white circle) | Buzzes and saves; the lines fold into one and it closes |
 | Tap the keyboard button or the text | Lets you type or fix a word while it keeps listening |
 | Tap the lines after a speech error | Starts listening again |
 | Press back, go home, or flip it shut | Saves what's there, so a thought never gets lost by accident |
@@ -85,3 +103,4 @@ The APK lands in `app\build\outputs\apk\debug\app-debug.apk`. Builds from this P
 - `app/src/main/java/app/thoughtcapturer/Recorder.kt`: the continuous recording, pause detection and the audio file
 - `app/src/main/java/app/thoughtcapturer/SaveJob.kt`: the offline queue plus the Gemini, To Do and OneNote calls
 - `app/src/main/java/app/thoughtcapturer/SettingsActivity.kt`: Microsoft sign-in and the Gemini key
+- `app/src/main/java/app/thoughtcapturer/StickyNote.kt`: the sticky note widget and the items it keeps
