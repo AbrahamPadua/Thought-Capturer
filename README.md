@@ -79,7 +79,7 @@ With no signal, captures wait in a queue and go out once you're back online, eve
 
 Guard watches for short-form video feeds (Instagram Reels, YouTube Shorts, and TikTok) while leaving Instagram DMs and normal YouTube videos open.
 
-1. Open **Settings**, scroll to **Guard**, and tap **Enable Guard in Accessibility**. Turn on **Capture** in Android's Installed apps or Downloaded apps list.
+1. Open **Settings**, scroll to **Guard**, and tap **Enable Guard in Accessibility**. Turn on **Capture** in Android's Installed apps or Downloaded apps list. If the switch is grayed out, Android is blocking it because the app was installed from a file: open the phone's Settings, go to Apps, then Capture, tap ⋮ in the top right, choose **Allow restricted settings**, and try again.
 2. Tap **Allow calendar focus blocks** if you want Guard to treat calendar events like classes (`CSE 100`, `COGS 108`), study blocks, and homework sessions as active focus time. You can also type a current focus task directly in Settings. It counts as focus time for 3 hours from when you type it, and Settings shows when it ends.
 3. Tap **Stage** to cycle through the four evaluation stages:
    - `1 · Baseline`: logs short-form feed time without interrupting.
