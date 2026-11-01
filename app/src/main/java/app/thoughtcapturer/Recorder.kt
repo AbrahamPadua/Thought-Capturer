@@ -52,6 +52,34 @@ internal class Segmenter(private val threshold: Float = 0.25f, private val pause
     val speaking get() = speechMs > 0
 }
 
+/**
+ * Leaves long silences out of what goes to Gemini, so a capture left open on the desk stays small enough to send.
+ * Keeps the first [keepMs] of every pause, so speech keeps its rhythm, and the last [leadMs] before speech comes back,
+ * so a soft first word isn't clipped. [threshold] sits below the segmenter's, so quiet speech still counts as speech.
+ */
+internal class Trimmer(private val threshold: Float = 0.12f, private val keepMs: Long = 2000, private val leadMs: Long = 300) {
+    private var quietMs = 0L
+    private val held = ArrayDeque<Pair<ByteArray, Long>>()
+    private var heldMs = 0L
+
+    /** The chunks to keep now, given this one: none in the middle of a long pause. */
+    fun feed(chunk: ByteArray, level: Float, chunkMs: Long): List<ByteArray> {
+        if (level >= threshold) {
+            quietMs = 0
+            val out = held.map { it.first } + chunk
+            held.clear()
+            heldMs = 0
+            return out
+        }
+        quietMs += chunkMs
+        if (quietMs <= keepMs) return listOf(chunk)
+        held.addLast(chunk to chunkMs)
+        heldMs += chunkMs
+        while (heldMs > leadMs) heldMs -= held.removeFirst().second
+        return emptyList()
+    }
+}
+
 /** 16kHz mono 16-bit PCM wrapped in a WAV header, the form Gemini takes inline. */
 internal fun wav(pcm: ByteArray, rate: Int = RATE): ByteArray {
     val out = java.nio.ByteBuffer.allocate(44 + pcm.size).order(java.nio.ByteOrder.LITTLE_ENDIAN)
@@ -63,9 +91,10 @@ internal fun wav(pcm: ByteArray, rate: Int = RATE): ByteArray {
 
 /**
  * One continuous recording from open to close, never restarted, so nothing said between sentences is lost.
- * Each 50ms chunk goes to the file (the upload job's source of truth), to the plot, to Android's recognizer
- * through a pipe (rough live words), and to the segmenter, which hands each finished sentence's audio to
- * [onSentence] for a Gemini correction. Callbacks run on the recording thread.
+ * Each 50ms chunk goes to the plot, to Android's recognizer through a pipe (rough live words), and to the segmenter.
+ * With long silences trimmed out, it also goes to the file (the upload job's source of truth) and to the current
+ * sentence, whose audio [onSentence] gets for a Gemini correction once the segmenter ends it. Callbacks run on the
+ * recording thread.
  */
 class Recorder(
     val file: File,
@@ -97,6 +126,7 @@ class Recorder(
             val bytes = ByteArray(CHUNK * 2)
             val sentence = ByteArrayOutputStream()
             val segmenter = Segmenter()
+            val trimmer = Trimmer()
             FileOutputStream(file, true).buffered().use { out ->
                 while (running) {
                     val n = rec.read(samples, 0, CHUNK)
@@ -111,12 +141,16 @@ class Recorder(
                         bytes[2 * i] = samples[i].toByte()
                         bytes[2 * i + 1] = (samples[i].toInt() shr 8).toByte()
                     }
-                    out.write(bytes, 0, n * 2)
-                    sentence.write(bytes, 0, n * 2)
-                    toRecognizer.offer(bytes.copyOf(n * 2))
+                    val chunk = bytes.copyOf(n * 2) // its own copy: the trimmer may hold it and the recognizer queue keeps it
                     val level = levelOf(samples, n)
+                    val ms = n * 1000L / RATE
+                    for (c in trimmer.feed(chunk, level, ms)) {
+                        out.write(c)
+                        sentence.write(c)
+                    }
+                    toRecognizer.offer(chunk) // the recognizer hears everything, in real time
                     onLevel(level)
-                    if (segmenter.feed(level, n * 1000L / RATE)) {
+                    if (segmenter.feed(level, ms)) {
                         heardSpeech = true
                         onSentence(sentence.toByteArray())
                         sentence.reset()

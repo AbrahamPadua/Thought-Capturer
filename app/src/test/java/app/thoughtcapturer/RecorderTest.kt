@@ -34,6 +34,20 @@ class RecorderTest {
     }
 
     @Test
+    fun trimsLongPausesButKeepsShortOnesAndTheLeadIn() {
+        val t = Trimmer(threshold = 0.12f, keepMs = 2000, leadMs = 300)
+        fun chunk(i: Int) = byteArrayOf(i.toByte())
+        assertEquals(1, t.feed(chunk(0), 0.5f, 50).size)
+        // five seconds of quiet: the first two are kept, the rest held back
+        val pause = (1..100).map { t.feed(chunk(it), 0f, 50) }
+        assertEquals(40, pause.count { it.isNotEmpty() })
+        // speech again brings the last 300ms of the pause with it, in order
+        assertEquals((95..101).map { it.toByte() }, t.feed(chunk(101), 0.5f, 50).map { it[0] })
+        // and the next pause starts its two seconds over
+        assertEquals(1, t.feed(chunk(102), 0f, 50).size)
+    }
+
+    @Test
     fun wavHeaderDescribes16kMono16Bit() {
         val pcm = ByteArray(3200) { it.toByte() }
         val w = wav(pcm)

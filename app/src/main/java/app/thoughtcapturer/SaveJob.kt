@@ -172,7 +172,8 @@ fun defaultListId(get: (String) -> JSONObject): String {
 private const val SPEECH_RULES = "The speaker has an Asian accent and may mix English, Tagalog and Spanish in one sentence. " +
     "Write every word in the language it was spoken; never translate. Where the accent makes a word ambiguous, choose the most likely word in context."
 
-// shortcut: Gemini takes about 20MB inline; past ~6 minutes of 16kHz audio the job sends the on-screen text instead. Use the Files API if longer notes matter.
+// shortcut: Gemini takes about 20MB inline; past ~6 minutes of speech (long silences are trimmed out) the job sends the
+// on-screen text instead. Use the Files API if longer notes matter.
 const val MAX_AUDIO = 12_000_000L
 
 /** The transcript Gemini returned with an audio split, or null when the split had none (typed only, or a failed call). */
