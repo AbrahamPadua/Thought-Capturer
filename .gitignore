@@ -6,6 +6,7 @@ local.properties
 .idea/
 *.apk
 .claude/
+.agents/skills/
 .impeccable/questions/
 .impeccable/review/
 .impeccable/mocks/
