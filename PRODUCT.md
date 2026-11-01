@@ -16,7 +16,7 @@ One tap opens a capture screen that is already listening. The user talks, or typ
 
 ## Positioning
 
-Capture is a front door, not another inbox. It files into the places the user already reviews: To Do, which their canvas-todo-sync tool also fills from Canvas and Gradescope, and OneNote. It sorts a ramble into to-dos and notes on its own.
+Capture is a front door, not another inbox. It files into the places the user already reviews: To Do, which their canvas-todo-sync tool also fills from Canvas and Gradescope, and OneNote. It sorts a ramble into to-dos and notes on its own, and parks the maybes ("maybe I should...") in the note instead of To Do. The one thing it shows back is a sticky note widget on the home or cover screen with those maybes on top and recent notes below, each cleared with a check.
 
 ## Operating Context
 

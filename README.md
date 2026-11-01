@@ -43,7 +43,7 @@ When you list what you'd have to do before a bigger task, those become steps ins
 
 ## The sticky note
 
-The Capture sticky note is a widget for the home screen or the cover screen. Later lines sit at the top and recent notes below them, newest first, and you scroll for more. Tap the check next to an item to clear it from the widget; the OneNote page stays. Tap the item itself to open its page in OneNote.
+The Capture sticky note is a widget for the home screen or the cover screen. Later lines sit at the top and recent notes below them, newest first, and you scroll for more. Tap the check next to an item to clear it from the widget; the OneNote page stays. Tap the item itself to open its page in OneNote. On the cover screen the phone asks you to open it first, unless you add OneNote to the cover screen apps in Good Lock's MultiStar, the same way as Capture.
 
 - Home screen: long-press an empty spot, tap Widgets, find Capture and add Capture sticky note.
 - Cover screen: Settings → Cover screen → Widgets, then turn on Capture sticky note.
