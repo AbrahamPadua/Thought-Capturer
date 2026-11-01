@@ -55,7 +55,7 @@ class GuardService : AccessibilityService() {
 
     private fun processScreen(pkg: String, eventType: Int) {
         val root = try { rootInActiveWindow } catch (_: Exception) { null } ?: return
-        val nodes = walkNodes(root, limit = 60)
+        val nodes = walkNodes(root, limit = 150)
         val kind = classifyScreen(pkg, nodes)
         val isShort = kind is ScreenKind.ShortForm
         val nowMs = System.currentTimeMillis()
