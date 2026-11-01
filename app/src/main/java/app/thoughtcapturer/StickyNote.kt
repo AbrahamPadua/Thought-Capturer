@@ -71,6 +71,7 @@ class StickyWidget : AppWidgetProvider() {
     override fun onReceive(ctx: Context, intent: Intent) {
         if (intent.action != TAP) return super.onReceive(ctx, intent)
         val id = intent.getStringExtra("id") ?: return
+        Log.i("Capture", "sticky note tap: $id clear=${intent.getBooleanExtra("clear", false)}")
         if (intent.getBooleanExtra("clear", false)) return ctx.unstick(id)
         val s = stickies(ctx.prefs().getString("sticky", null)).firstOrNull { it.id == id } ?: return
         // the OneNote app if it's installed, else the page in a browser

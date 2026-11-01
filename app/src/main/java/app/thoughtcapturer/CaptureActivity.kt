@@ -89,6 +89,7 @@ class CaptureActivity : Activity(), RecognitionListener {
         super.onCreate(state)
         bind()
         SettingsActivity.pollSignIn(applicationContext)
+        StickyWidget.refresh(this) // an app update leaves the widget showing its old views until something redraws it
         start()
     }
 

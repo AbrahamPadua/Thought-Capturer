@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- blocksDescendants: a focusable ImageButton inside a list row otherwise swallows the row's own tap -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/row"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:descendantFocusability="blocksDescendants"
     android:gravity="center_vertical"
     android:minHeight="56dp"
     android:orientation="horizontal"
