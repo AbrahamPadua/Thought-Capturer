@@ -279,6 +279,8 @@ class GuardTest {
         val updated = ctx.guardStats(day)
         assertEquals(120, updated.shortFormSec)
         assertEquals(2, updated.overrides)
+        assertEquals(0, ctx.guardStats("2026-11-02").shortFormSec)
+        assertEquals(1, ctx.prefs().all.keys.count { it.startsWith("guard_stats") })
 
         val summary = updated.summaryText(cfg)
         assertTrue(summary.contains("2 / 20m leisure"))

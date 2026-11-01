@@ -478,9 +478,10 @@ fun Context.saveGuardConfig(cfg: GuardConfig) {
 }
 
 fun Context.guardStats(day: String = todayDay()): GuardStats {
-    val raw = prefs().getString("guard_stats_$day", null) ?: return GuardStats(day)
+    val raw = prefs().getString("guard_stats", null) ?: return GuardStats(day)
     return runCatching {
         val o = JSONObject(raw)
+        if (o.optString("day") != day) return GuardStats(day)
         GuardStats(
             day = day,
             shortFormSec = o.optInt("shortFormSec", 0),
@@ -493,15 +494,15 @@ fun Context.guardStats(day: String = todayDay()): GuardStats {
 }
 
 fun Context.updateGuardStats(day: String = todayDay(), transform: (GuardStats) -> GuardStats): GuardStats {
-    val current = guardStats(day)
-    val updated = transform(current)
+    val updated = transform(guardStats(day))
     val o = JSONObject()
+        .put("day", day)
         .put("shortFormSec", updated.shortFormSec)
         .put("unplannedOpenings", updated.unplannedOpenings)
         .put("returnedToTask", updated.returnedToTask)
         .put("overrides", updated.overrides)
         .put("notificationsSent", updated.notificationsSent)
-    prefs().edit().putString("guard_stats_$day", o.toString()).apply()
+    prefs().edit().putString("guard_stats", o.toString()).apply()
     return updated
 }
 
