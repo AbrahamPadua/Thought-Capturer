@@ -14,6 +14,8 @@ One user: the owner, a student, on a Samsung Galaxy Z Flip 7. They reach Capture
 
 One tap opens a capture screen that is already listening. The user talks, or types, until they tap Done; the text is queued and uploaded in the background. Gemini splits it into to-dos (with due dates, reminders and steps), an organized note, and a Later list of maybes. To-dos land in Microsoft To Do's Tasks list and notes in a OneNote section named Capture. Success means the thought is filed correctly without fiddling, and the user is back on task.
 
+When the user drifts into short-form feeds (Instagram Reels, YouTube Shorts, TikTok) during a calendar focus block or past their daily allowance, Guard steps in with the active commitment and next step, offers a one-tap return to work or a quick capture before returning, and grants a 5-minute pass when the user states an important purpose.
+
 ## Positioning
 
 Capture is a front door, not another inbox. It files into the places the user already reviews: To Do, which their canvas-todo-sync tool also fills from Canvas and Gradescope, and OneNote. It sorts a ramble into to-dos and notes on its own, and parks the maybes ("maybe I should...") in the note instead of To Do. The one thing it shows back is a sticky note widget on the home or cover screen with those maybes on top and recent notes below, each cleared with a check.
@@ -31,8 +33,9 @@ Capture is a front door, not another inbox. It files into the places the user al
 - Speech is one continuous recording. Android's recognizer reads it for rough live words, Gemini corrects each finished sentence and transcribes the whole recording at upload, and its loudness drives the plot.
 - Recording runs until Done (save) or Cancel (discard). Pauses and touches don't stop it, leaving the app saves, and the screen stays on while it's open.
 - Uploads are expedited JobScheduler jobs that survive being offline and rebooting. Failures show in Settings.
-- Settings holds the Microsoft device-code sign-in, the Gemini key, and queue status with the last errors.
-- The redesign covers the capture screen and Settings.
+- Settings holds the Microsoft device-code sign-in, the Gemini key, queue status with the last errors, and Guard focus and accountability controls.
+- Guard runs as an on-device AccessibilityService that distinguishes Reels and Shorts from DMs and standard videos, reads Android Calendar for active study or class blocks, and checks stated purpose locally against redacted screen headers before falling back to Gemini.
+- The redesign covers the capture screen, the Guard intervention screen, and Settings.
 
 ## Evidence on Hand
 

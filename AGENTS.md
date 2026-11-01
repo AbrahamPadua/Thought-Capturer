@@ -53,7 +53,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 
 ```powershell
 $env:JAVA_HOME = "$env:LOCALAPPDATA\Programs\jdk17"
-$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+$env:ANDROID_HOME = if (Test-Path "$env:LOCALAPPDATA\Android\Sdk") { "$env:LOCALAPPDATA\Android\Sdk" } else { "C:\Program Files\Unity\Hub\Editor\6000.5.10f1\Editor\Data\PlaybackEngines\AndroidPlayer\SDK" }
 .\gradlew.bat testDebugUnitTest assembleDebug
 ```
 

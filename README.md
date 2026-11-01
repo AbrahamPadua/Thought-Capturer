@@ -75,6 +75,20 @@ The screen stays on while Capture is open, so the cover screen can't time out mi
 
 With no signal, captures wait in a queue and go out once you're back online, even after a reboot. If Gemini fails, the words the screen showed are saved as one to-do. A recording that showed no words waits and tries again, so it's never filed empty.
 
+## Staying on task with Guard
+
+Guard watches for short-form video feeds (Instagram Reels, YouTube Shorts, and TikTok) while leaving Instagram DMs and normal YouTube videos open.
+
+1. Open **Settings**, scroll to **Guard**, and tap **Enable Guard in Accessibility**. Turn on **Capture** in Android's Installed apps or Downloaded apps list.
+2. Tap **Allow calendar focus blocks** if you want Guard to treat calendar events like classes (`CSE 100`, `COGS 108`), study blocks, and homework sessions as active focus time. You can also type a current focus task directly in Settings.
+3. Tap **Stage** to cycle through the four evaluation stages:
+   - `1 · Baseline`: logs short-form feed time without interrupting.
+   - `2 · Guard only`: blocks Reels, Shorts, and TikTok during focus blocks or after your daily short-form budget or 5-video streak limit.
+   - `3 · Guard + Return to task`: shows your active focus commitment and next step, with buttons to return to your task, capture a thought first, or state an important purpose for a 5-minute pass.
+   - `4 · Guard + Return + Accountability`: adds optional partner notifications when you repeatedly override a focus block.
+4. During an important-use pass, Guard checks on the phone that the screen still matches your stated purpose (and blocks Reels or Shorts immediately). If the local check can't tell from the screen headers and you have a Gemini key set, it checks redacted headers with Gemini and fails open when offline.
+5. Tap **Accountability** to pick `Off`, `Supportive` (sends a low-shame check-in after repeated overrides, at most once every 2 hours), or `Consequence` (starts a 30-second countdown on the Guard screen with a **False positive, cancel** button before sending). Paste a webhook URL or phone number into the accountability field.
+
 ## When something's off
 
 Open Settings (the sliders button). Under **Queue** it shows what's waiting and the last error.
@@ -87,12 +101,14 @@ Open Settings (the sliders button). Under **Queue** it shows what's waiting and 
 
 Capture records your voice itself. Google's speech service on the phone reads that recording to show the rough live words. With a Gemini key, the recording goes to Gemini for the accurate transcript, and the audio file is deleted from the phone once the capture is filed. The text goes to Microsoft To Do and OneNote. The Microsoft sign-in and the Gemini key stay in the app's private storage and are kept out of phone backups.
 
+Guard checks app package names and view IDs on the phone. When you use an important-use pass and local keyword matching is uncertain, Guard strips out editable fields, password fields, message bodies, emails, and phone numbers, and sends at most five short header lines to Gemini to check whether the screen matches your stated purpose.
+
 ## Building it again
 
-The PC has the toolchain in `%LOCALAPPDATA%\Programs\jdk17` and `%LOCALAPPDATA%\Android\Sdk`. From this folder in PowerShell:
+The PC has the toolchain in `%LOCALAPPDATA%\Programs\jdk17` and either `%LOCALAPPDATA%\Android\Sdk` or the Unity Android SDK. From this folder in PowerShell:
 
 ```powershell
-$env:JAVA_HOME = "$env:LOCALAPPDATA\Programs\jdk17"; $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"; .\gradlew.bat testDebugUnitTest assembleDebug
+$env:JAVA_HOME = "$env:LOCALAPPDATA\Programs\jdk17"; $env:ANDROID_HOME = if (Test-Path "$env:LOCALAPPDATA\Android\Sdk") { "$env:LOCALAPPDATA\Android\Sdk" } else { "C:\Program Files\Unity\Hub\Editor\6000.5.10f1\Editor\Data\PlaybackEngines\AndroidPlayer\SDK" }; .\gradlew.bat testDebugUnitTest assembleDebug
 ```
 
 The APK lands in `app\build\outputs\apk\debug\app-debug.apk`. Builds from this PC share one signing key, so a new APK installs over the old one and keeps your sign-in.
@@ -102,5 +118,8 @@ The APK lands in `app\build\outputs\apk\debug\app-debug.apk`. Builds from this P
 - `app/src/main/java/app/thoughtcapturer/CaptureActivity.kt`: the capture screen
 - `app/src/main/java/app/thoughtcapturer/Recorder.kt`: the continuous recording, pause detection and the audio file
 - `app/src/main/java/app/thoughtcapturer/SaveJob.kt`: the offline queue plus the Gemini, To Do and OneNote calls
-- `app/src/main/java/app/thoughtcapturer/SettingsActivity.kt`: Microsoft sign-in and the Gemini key
+- `app/src/main/java/app/thoughtcapturer/SettingsActivity.kt`: Microsoft sign-in, the Gemini key, and Guard settings
 - `app/src/main/java/app/thoughtcapturer/StickyNote.kt`: the sticky note widget and the items it keeps
+- `app/src/main/java/app/thoughtcapturer/Guard.kt`: the screen classifier, calendar focus detector, purpose verifier, and policy engine
+- `app/src/main/java/app/thoughtcapturer/GuardService.kt`: the AccessibilityService that watches for short-form feeds and enforces passes
+- `app/src/main/java/app/thoughtcapturer/GuardActivity.kt`: the Pulse Sleeve intervention screen for returning to your task or taking a pass
